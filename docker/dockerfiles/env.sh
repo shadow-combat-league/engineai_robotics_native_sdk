@@ -4,6 +4,25 @@
 cd "${PROJECT_DIR}" || exit 1
 COMPOSE_CMD="docker compose ${COMPOSE_FILES}"
 
+prepare_x11_auth() {
+    if [ -z "${DISPLAY:-}" ]; then
+        echo "DISPLAY is not set; GUI applications will not be able to open windows."
+        return
+    fi
+
+    export DOCKER_XAUTHORITY="${PROJECT_DIR}/.docker.xauth"
+    touch "${DOCKER_XAUTHORITY}"
+    chmod 600 "${DOCKER_XAUTHORITY}"
+
+    if command -v xauth >/dev/null 2>&1; then
+        if ! xauth -i nlist "${DISPLAY}" | sed -e 's/^..../ffff/' | xauth -f "${DOCKER_XAUTHORITY}" nmerge - >/dev/null 2>&1; then
+            echo "Warning: failed to copy X11 auth for DISPLAY=${DISPLAY}."
+        fi
+    else
+        echo "Warning: xauth is not installed on the host; X11 authorization may fail."
+    fi
+}
+
 if [ "${1:-}" == "clean" ]; then
     ${COMPOSE_CMD} down
     echo "Container cleaned up."
@@ -19,6 +38,8 @@ if [ "${1:-}" == "clean" ]; then
     fi
     exit 0
 fi
+
+prepare_x11_auth
 
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     CONTAINER_STATUS=$(docker inspect -f '{{.State.Status}}' "${CONTAINER_NAME}")
@@ -48,11 +69,11 @@ CID=$(${COMPOSE_CMD} ps -q)
 user=$USER
 
 if [ "$#" == "0" ]; then
-    docker exec -it --user "$user" "$CID" bash -c "source /etc/profile; export QT_X11_NO_MITSHM=1; bash"
+    docker exec -it --user "$user" "$CID" bash -c "source /etc/profile; export XAUTHORITY=/tmp/.docker.xauth; export QT_X11_NO_MITSHM=1; bash"
 else
     if [ "$1" == "bash" ]; then
-        docker exec -it --user "$user" "$CID" bash -c "source /etc/profile; export QT_X11_NO_MITSHM=1; $* "
+        docker exec -it --user "$user" "$CID" bash -c "source /etc/profile; export XAUTHORITY=/tmp/.docker.xauth; export QT_X11_NO_MITSHM=1; $* "
     else
-        docker exec --user "$user" "$CID" bash -c "source /etc/profile; export QT_X11_NO_MITSHM=1; $* &"
+        docker exec --user "$user" "$CID" bash -c "source /etc/profile; export XAUTHORITY=/tmp/.docker.xauth; export QT_X11_NO_MITSHM=1; $* &"
     fi
 fi
