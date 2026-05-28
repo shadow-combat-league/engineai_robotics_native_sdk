@@ -19,7 +19,7 @@ tasks:
   - task: sim_subscribe
     cpu: 1
     priority: 10
-    period: 0
+    period: 0.002
     runner:
       - name: sim_subscribe_runner
         enabled: true
