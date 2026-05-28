@@ -16,7 +16,23 @@ LcmSubscriber::LcmSubscriber(const data::LcmParam& param, const std::shared_ptr<
 
 void LcmSubscriber::TaskInit() {}
 
-void LcmSubscriber::TaskRun() { lcm_->handle(); }
+void LcmSubscriber::TaskRun() {
+  constexpr int kTimeoutMillis = 2;
+  int result = lcm_->handleTimeout(kTimeoutMillis);
+  int handled = result > 0 ? 1 : 0;
+  while (result > 0 && handled < 64) {
+    result = lcm_->handleTimeout(0);
+    if (result > 0) {
+      ++handled;
+    }
+  }
+
+  if (result < 0) {
+    LOG_EVERY_T(ERROR, 1.0) << "Failed to handle sim_command LCM message.";
+  } else if (handled == 64) {
+    LOG_EVERY_T(WARNING, 1.0) << "sim_command LCM queue reached drain limit.";
+  }
+}
 
 void LcmSubscriber::HandleSimCommand(const lcm::ReceiveBuffer* rbuf, const std::string& channel,
                                      const data::SimCommand* msg) {
