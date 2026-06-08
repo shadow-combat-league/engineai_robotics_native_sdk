@@ -22,6 +22,7 @@ tasks:
     manual_transition:
       - idle
       - pd_stand
+      - supine_to_stance
     key: [LB, RB]
 
   - motion: pd_stand
@@ -46,6 +47,7 @@ tasks:
       - passive
       - pd_stand
       - dance
+      - stance_to_supine
     key: [LB, B]
 
   - motion: dance
@@ -59,3 +61,26 @@ tasks:
       - walk
     auto_transition: walk
     key: [RB, B]
+
+  - motion: supine_to_stance
+    period: 0.01
+    runner:
+      - name: rl_mimic_trajectory_runner
+        enabled: true
+        param_tag: rl_supine_to_stance
+    manual_transition:
+      - passive
+    auto_transition: walk
+    key: [START, CROSS_X_UP]
+
+  - motion: stance_to_supine
+    period: 0.01
+    runner:
+      - name: rl_mimic_trajectory_runner
+        enabled: true
+        param_tag: rl_stance_to_supine
+    manual_transition:
+      - passive
+      - pd_stand
+    auto_transition: passive
+    key: [START, CROSS_X_DOWN]

@@ -47,6 +47,10 @@ mode:
       scope: rl_dance_example/default
     - tag: ros2_bridge
       scope: ros2_bridge/default
+    - tag: rl_supine_to_stance
+      scope: rl_supine_to_stance/default
+    - tag: rl_stance_to_supine
+      scope: rl_stance_to_supine/default
 
   sim:
     - tag: resident_task
@@ -81,3 +85,7 @@ mode:
       scope: rl_dance_example/default
     - tag: ros2_bridge
       scope: ros2_bridge/default
+    - tag: rl_supine_to_stance
+      scope: rl_supine_to_stance/default
+    - tag: rl_stance_to_supine
+      scope: rl_stance_to_supine/default

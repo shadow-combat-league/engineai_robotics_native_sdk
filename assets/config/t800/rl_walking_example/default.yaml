@@ -1,5 +1,5 @@
 # mlp net parameters
-policy_file: "rl_walking_example/policies/251111_180036_saw_50k.mnn"
+policy_file: "rl_walking_example/policy/t800_260318_150533_60000.mnn"
 num_observations: 72
 active_joint_names:
   [
@@ -35,6 +35,10 @@ observation_scale_dof_vel: 0.05
 observation_scale_quat: 1.0
 observation_clip: 100.0
 
+# gait parameters
+cycle_time: 0.8
+still_ratio: 0.1
+
 # joint control parameters
 action_clip: 100.0
 default_joint_q:
@@ -66,15 +70,71 @@ action_scale:
   - [0.5, 0.2, 0.2, 0.5, 0.5, 0.2]
   - [0.2, 0.2, 0.05, 0.2, 0.05]
   - [0.2, 0.2, 0.05, 0.2, 0.05]
-
+soft_torque_limit:
+  - [0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
+  - [0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
+  - [0.9]
+  - [0.9, 0.9, 0.9, 0.9, 0.9]
+  - [0.9, 0.9, 0.9, 0.9, 0.9]
+  - [0.9, 0.9]
 control_dt: 0.01
 
 # sim to real fine tune parameters
 enable_remote_command_lpf: true
 remote_command_sampling_frequency: 40.0
 remote_command_cut_off_frequency: 0.1
-
-command_scale_pos: [1.0, 0.4, 1.0]
-command_scale_neg: [1.0, 0.4, 1.0]
-
+transition_time: 0.5
+command_scale_pos: [1.2, 0.4, 1.0]
+command_scale_neg: [0.6, 0.4, 1.0]
+command_deadband: 0.2
+command_bias: [0.0, 0.0, 0.0]
+linear_vel_delta_bias: 0.001
+angular_vel_delta_bias: 0.001
+imu_install_delta_bias: 0.0
 imu_install_bias: [0, 0.0, 0]
+
+# try to stop stablely
+use_gait: false
+tune_stop: false
+gait_base_frequency: 1.0 # Hz
+gait_base_stance_duty: 0.5
+num_gait_command_obs: 8
+stop_vel_threshold: 0.3
+stop_left_phase_condition: [0.24, 0.26] # > $1 && < $2
+stop_right_phase_condition: [1.0, 1.0] # > $1 && < $2
+stop_least_duration: 1.0 # unit: second
+lost_balance_in_x_threshold: [-0.8, 2.0] # action < $1 || > $2
+lost_balance_in_y_threshold: [0.04, 0.24] # distance < $1 || > $2
+ankle_roll_link_names: [LINK_ANKLE_ROLL_L, LINK_ANKLE_ROLL_R]
+
+
+enable_auto_fall_transition: true
+fall_threshold: 0.5 # pitch angle threshold to detect fall (rad)
+
+use_pd_control_for_yaw: true
+yaw_control_kp: 2.0
+yaw_control_kd: 0.0
+pd_yaw_cmd_limit: [-1, 1]
+
+head_shake_enable: true
+head_joint_names: ["J23_HEAD_PITCH", "J24_HEAD_YAW"]
+head_shake_amplitude: [0.3, 1.0]
+head_shake_flip: [-1, 1]
+head_shake_frequency: 0.2
+
+head_random_duration: 2.0
+head_random_target_positions:
+  - [0.0, 0.0] # 初始位置
+  - [0.0, 0.0] # 初始位置
+  - [0.0, 0.0] # 初始位置
+  - [-0.3, 0.0] # 头部向上看
+  - [0.3, 0.0] # 头部向下看
+  - [0.0, 1.0] # 头部向左转
+  - [0.0, -1.0] # 头部向右转
+  # - [-0.3, 0.8] # 左上方
+  # - [-0.3, -0.8] # 右上方
+  - [0.3, 1.0] # 左下方
+  - [0.3, -1.0] # 右下方
+
+speed_mode: true
+speed_ratio: 0.6

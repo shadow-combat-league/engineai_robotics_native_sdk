@@ -321,6 +321,12 @@ void RlDanceExampleRunner::CalculateMotorCommand() {
   } else {
     q_des_(*policy2deploy_joint_idx_) += mlp_net_action_->cwiseProduct(action_scale_);
   }
+  
+  //轨迹播放完毕则退出 runner
+  if (IsTrajectoryFinished()) {
+    LOG(INFO) << "Trajectory finished, requesting exit.";
+    SetRunnerState(RunnerState::kTryExit);
+  }
 }
 
 /**
@@ -423,6 +429,20 @@ Eigen::MatrixXd RlDanceExampleRunner::npyFloatToMatrixXd(const cnpy::NpyArray& n
  */
 int RlDanceExampleRunner::GetObservationDim(const std::string& name) const {
   return wbt_obs::GetObservationDim(name, param_->num_actions);
+}
+
+/**
+ * @brief Checks whether the reference trajectory has been fully played back.
+ *
+ * Mirrors the mimic-type judgment in RlMimicTrajectoryRunner:
+ *   - ref_joint_pos_all_  ↔  current_traj_
+ *   - policy_step         ↔  GetCurrentTrajectoryIndex()
+ *
+ * @return true if the trajectory pointer is valid and the current frame index
+ *         has reached the last frame of the reference trajectory.
+ */
+bool RlDanceExampleRunner::IsTrajectoryFinished() const {
+  return ref_joint_pos_all_ && policy_step >= static_cast<int>(ref_joint_pos_all_->rows()) - 1;
 }
 
 /**

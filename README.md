@@ -188,6 +188,8 @@ State transition logic varies by robot model. Refer to the per-model sections be
 | pd_stand | Stable standing control task. The robot maintains a fixed upright posture via PD control. |
 | walk | Walking task. The robot executes gait locomotion. |
 | dance | Dance task. The robot executes predefined choreographed motion sequences. |
+| supine_to_stance | Stand-up task. The robot transitions from a supine (lying on back) posture to standing posture. |
+| stance_to_supine | Lie-down task. The robot transitions from standing posture to a supine (lying on back) posture. |
 
 **State Machine Configuration:** `assets/config/t800/task_motion/default.yaml`
 
