@@ -41,6 +41,7 @@ class RlDanceExampleRunner : public MotionRunner {
 
   int GetObservationDim(const std::string& name) const;
   int ComputeTotalObservationDim() const;
+  bool IsTrajectoryFinished() const;
 
   // --- Parameters and reference trajectory ---
   std::shared_ptr<data::RlDanceExampleParam> param_;

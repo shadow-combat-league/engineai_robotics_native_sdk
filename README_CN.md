@@ -176,6 +176,8 @@ python3 tools/virtual_gamepad/virtual_gamepad.py
 | pd_stand | 稳定站立控制任务，通过 PD 控制维持固定直立姿态。 |
 | walk | 行走任务，机器人执行步态运动。 |
 | dance | 跳舞任务，机器人执行预设编排动作序列。 |
+| supine_to_stance | 起身任务。机器人从仰卧姿态过渡到站立姿态。|
+| stance_to_supine | 躺倒任务。机器人从站立姿态过渡到仰卧姿态。|
 
 **状态机配置：** `assets/config/t800/task_motion/default.yaml`
 
