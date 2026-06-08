@@ -35,6 +35,7 @@ LOCAL_IMAGE_NAME=${PROJECT_NAME}
 LOCAL_IMAGE_TAG=${LOCAL_IMAGE_TAG}
 WORKSPACE_DIR=${WORKSPACE_DIR}
 HOSTNAME=${HOSTNAME}
+DOCKER_XAUTHORITY=${PROJECT_DIR}/.docker.xauth
 EOF
 
 # --- Copy compose files and Dockerfile to project dir ---
