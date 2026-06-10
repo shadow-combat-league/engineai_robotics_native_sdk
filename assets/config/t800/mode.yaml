@@ -43,8 +43,6 @@ mode:
       scope: pd_stand/robot
     - tag: rl_walking_example
       scope: rl_walking_example/default
-    - tag: rl_dance_example
-      scope: rl_dance_example/default
     - tag: ros2_bridge
       scope: ros2_bridge/default
     - tag: rl_supine_to_stance
@@ -81,8 +79,6 @@ mode:
       scope: pd_stand/default
     - tag: rl_walking_example
       scope: rl_walking_example/default
-    - tag: rl_dance_example
-      scope: rl_dance_example/default
     - tag: ros2_bridge
       scope: ros2_bridge/default
     - tag: rl_supine_to_stance
