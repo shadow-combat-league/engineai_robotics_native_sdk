@@ -1,4 +1,3 @@
-
 # Get the current folder name
 string(REGEX REPLACE ".*/\(.*\)" "\\1" CURRENT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -26,6 +25,7 @@ target_sources(${CURRENT_TARGET_NAME} INTERFACE ${head_files})
 target_include_directories(${CURRENT_TARGET_NAME}
   PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../common/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 
@@ -36,11 +36,6 @@ target_link_libraries(${CURRENT_TARGET_NAME}
     glog::glog
     fmt::fmt
     Eigen3::Eigen
-    lcm
-    src::runner::basic
-    src::data
-    src::hardware::gamepad
-    src::hardware::rc02
 )
 
 # Set installation of target

@@ -1,9 +1,15 @@
 #pragma once
 
 #include <chrono>
+
 #include "data_store/data_store.h"
 
 namespace runner {
+
+enum class InputAdapterStatus {
+  NORMAL,
+  LOST,
+};
 
 // Common interface for any input source that can participate in arbitration.
 class BaseInputAdapter {
@@ -12,8 +18,8 @@ class BaseInputAdapter {
       : name_(name), data_store_(data_store) {}
   virtual ~BaseInputAdapter() = default;
 
-  virtual void Init() = 0;
-  virtual void Run() = 0;
+  virtual bool Init() = 0;
+  virtual InputAdapterStatus Run() = 0;
 
   // Chain-of-responsibility entry point. Implementations may overwrite or
   // merge data into the aggregated input.
