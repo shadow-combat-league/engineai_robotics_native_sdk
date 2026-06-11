@@ -12,8 +12,8 @@ class GamepadInputAdapter : public BaseInputAdapter {
   explicit GamepadInputAdapter(std::string name, const std::shared_ptr<data::DataStore>& data_store);
   ~GamepadInputAdapter() = default;
 
-  void Init() override;
-  void Run() override;
+  bool Init() override;
+  InputAdapterStatus Run() override;
 
   // Chain-of-responsibility hooks.
   void Process(data::GamepadInfo& input) override;

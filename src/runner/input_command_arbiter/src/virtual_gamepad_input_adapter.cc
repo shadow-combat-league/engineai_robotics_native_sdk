@@ -6,11 +6,9 @@ namespace runner {
 
 VirtualGamepadInputAdapter::VirtualGamepadInputAdapter(std::string name,
                                                        const std::shared_ptr<data::DataStore>& data_store)
-    : BaseInputAdapter(std::move(name), data_store) {
-  Init();
-}
+    : BaseInputAdapter(std::move(name), data_store) {}
 
-void VirtualGamepadInputAdapter::Init() {
+bool VirtualGamepadInputAdapter::Init() {
   virtual_gamepad_publisher_ =
       data::VariantStore::GetInstance().CreatePublisher<data::GamepadInfo>("virtual/gamepad_info");
   ResetVirtualInput();
@@ -19,11 +17,12 @@ void VirtualGamepadInputAdapter::Init() {
 
   InitConnection();
   InitSubscription();
+  return true;
 }
 
-void VirtualGamepadInputAdapter::Run() {
+InputAdapterStatus VirtualGamepadInputAdapter::Run() {
   if (!EnsureConnection()) {
-    return;
+    return InputAdapterStatus::NORMAL;
   }
 
   int handle_result = 0;
@@ -37,7 +36,7 @@ void VirtualGamepadInputAdapter::Run() {
     subscription_initialized_ = false;
     ResetVirtualInput();
     virtual_gamepad_publisher_.Publish(virtual_input_);
-    return;
+    return InputAdapterStatus::NORMAL;
   }
 
   ClearLastError();
@@ -50,6 +49,7 @@ void VirtualGamepadInputAdapter::Run() {
   }
 
   Log();
+  return InputAdapterStatus::NORMAL;
 }
 
 void VirtualGamepadInputAdapter::Process(data::GamepadInfo& input) {

@@ -21,11 +21,15 @@ class InputCommandArbiterRunner : public BasicRunner {
   void Run() override;
 
  private:
-  void RegisterInputSource(const std::string& name, std::shared_ptr<BaseInputAdapter> adapter);
+  // Hardware-exclusive sources (rc02, gamepad), highest priority first.
+  void RegisterHardwareSource(const std::string& name, std::shared_ptr<BaseInputAdapter> adapter);
 
-  // Input sources ordered from low to high priority to form the chain.
-  std::vector<std::shared_ptr<BaseInputAdapter>> input_sources_;
-  std::string last_reported_error_;
+  // Override sources (virtual_gamepad), applied on top of the selected hardware source.
+  void RegisterOverrideSource(const std::string& name, std::shared_ptr<BaseInputAdapter> adapter);
+
+  std::vector<std::shared_ptr<BaseInputAdapter>> hardware_sources_;
+  std::vector<std::shared_ptr<BaseInputAdapter>> override_sources_;
+  int selected_hardware_idx_{-1};
 };
 
 }  // namespace runner

@@ -1,21 +1,26 @@
 #include "input_command_arbiter/gamepad_input_adapter.h"
 
+#include <glog/logging.h>
+
 namespace runner {
 
 GamepadInputAdapter::GamepadInputAdapter(std::string name, const std::shared_ptr<data::DataStore>& data_store)
-    : BaseInputAdapter(name, data_store) {
-  Init();
-}
+    : BaseInputAdapter(name, data_store) {}
 
-void GamepadInputAdapter::Init() {
+bool GamepadInputAdapter::Init() {
   hardware_gamepad_publisher_ =
       data::VariantStore::GetInstance().CreatePublisher<data::GamepadInfo>("hardware/gamepad_info");
   ResetDriverState();
-  CheckDeviceConnected();
+  static constexpr uint32_t kDriverRetryIntervalCount = 200;
+  failed_count_ = kDriverRetryIntervalCount - 1;
+  if (!CheckDeviceConnected()) {
+    return false;
+  }
+  LOG(INFO) << "GamepadInputAdapter initialized";
+  return true;
 }
 
-void GamepadInputAdapter::Run() {
-  // Refresh connection state and read the latest hardware sample.
+InputAdapterStatus GamepadInputAdapter::Run() {
   hardware_available_ = false;
 
   if (CheckDeviceConnected() == false) {
@@ -23,7 +28,7 @@ void GamepadInputAdapter::Run() {
     // observe the hardware loss without delay.
     hardware_input_.Reset();
     hardware_gamepad_publisher_.Publish(hardware_input_);
-    return;
+    return InputAdapterStatus::LOST;
   }
 
   ReadHardwareInput();
@@ -32,6 +37,7 @@ void GamepadInputAdapter::Run() {
   ClearLastError();
   hardware_gamepad_publisher_.Publish(hardware_input_);
   Log();
+  return InputAdapterStatus::NORMAL;
 }
 
 void GamepadInputAdapter::Process(data::GamepadInfo& input) {

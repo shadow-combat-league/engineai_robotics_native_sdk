@@ -24,8 +24,8 @@ class VirtualGamepadInputAdapter : public BaseInputAdapter {
   explicit VirtualGamepadInputAdapter(std::string name, const std::shared_ptr<data::DataStore>& data_store);
   ~VirtualGamepadInputAdapter() = default;
 
-  void Init() override;
-  void Run() override;
+  bool Init() override;
+  InputAdapterStatus Run() override;
   void Process(data::GamepadInfo& input) override;
   bool IsActive() const override;
   void Log() const override;
