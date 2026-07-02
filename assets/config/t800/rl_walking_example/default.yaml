@@ -83,7 +83,7 @@ control_dt: 0.01
 enable_remote_command_lpf: true
 remote_command_sampling_frequency: 40.0
 remote_command_cut_off_frequency: 0.1
-transition_time: 0.5
+transition_time: 0.0
 command_scale_pos: [1.2, 0.4, 1.0]
 command_scale_neg: [0.6, 0.4, 1.0]
 command_deadband: 0.2

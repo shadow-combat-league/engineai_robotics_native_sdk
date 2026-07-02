@@ -40,7 +40,7 @@ tasks:
 - motion: walk
   period: 0.01
   runner:
-  - name: rl_walking_example_runner
+  - name: rl_walking_example_pm01_runner
     enabled: true
     param_tag: rl_walking_example
   manual_transition:

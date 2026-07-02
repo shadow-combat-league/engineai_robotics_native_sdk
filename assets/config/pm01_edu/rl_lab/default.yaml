@@ -70,7 +70,7 @@ control_dt: 0.01
 enable_remote_command_lpf: False
 remote_command_sampling_frequency: 50.0
 remote_command_cut_off_frequency: 0.1
-transition_time: 0.5
+transition_time: 0.0
 command_scale: [1.0, 0.1, 1.0]
 command_bias: [0.0, 0.0, 0.0]
 linear_vel_delta_bias: 0.001
