@@ -34,6 +34,7 @@ tasks:
     manual_transition:
       - passive
       - walk
+      - dance      
     key: [LB, A]
 
   - motion: walk
@@ -46,7 +47,20 @@ tasks:
       - passive
       - pd_stand
       - stance_to_supine
+      - dance      
     key: [LB, B]
+
+  - motion: dance
+    period: 0.02
+    runner:
+      - name: rl_dance_example_runner
+        enabled: true
+    manual_transition:
+      - passive
+      - pd_stand
+      - walk
+    auto_transition: walk
+    key: [RB, B]
 
   - motion: supine_to_stance
     period: 0.01

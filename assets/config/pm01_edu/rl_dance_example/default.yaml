@@ -1,5 +1,6 @@
-policy_file: "rl_dance_example/policies/policy.mnn"
-trajectory_file_npz: "rl_dance_example/trajectories/dance1_subject2.npz"
+policy_file: "rl_dance_example/policies/dance.mnn"
+trajectory_file_npz: "rl_dance_example/trajectories/dance.npz"
+
 default_joint_pos:
   [
     -0.05999999865889549,

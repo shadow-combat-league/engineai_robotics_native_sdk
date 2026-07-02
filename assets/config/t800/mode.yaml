@@ -49,7 +49,9 @@ mode:
       scope: rl_supine_to_stance/default
     - tag: rl_stance_to_supine
       scope: rl_stance_to_supine/default
-
+    - tag: rl_dance_example
+      scope: rl_dance_example/default
+      
   sim:
     - tag: resident_task
       scope: task_resident/sim
@@ -85,3 +87,5 @@ mode:
       scope: rl_supine_to_stance/default
     - tag: rl_stance_to_supine
       scope: rl_stance_to_supine/default
+    - tag: rl_dance_example
+      scope: rl_dance_example/default
