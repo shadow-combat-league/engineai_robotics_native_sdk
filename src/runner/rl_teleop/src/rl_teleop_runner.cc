@@ -291,7 +291,10 @@ void RlTeleopRunner::CalculateMotorCommand() {
   // host through the docker mount). Columns: obs(127|124), act(15),
   // q_actual(25 obs order), q_des(25 obs order).
   {
-    static std::ofstream flight("rl_teleop_log.csv", std::ios::trunc);
+    static std::ofstream flight(
+        common::PathJoin(common::GlobalPathManager::GetInstance().GetConfigPath(),
+                         "rl_teleop/flight_log.csv"),
+        std::ios::trunc);
     if (flight.is_open()) {
       flight.precision(6);
       for (int i = 0; i < obs.size(); ++i) flight << obs(i) << ",";
