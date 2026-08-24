@@ -46,6 +46,7 @@ bool RlTeleopRunner::Enter() {
   transition_iter_ = 0;
   yaw_aligned_ = false;
   have_reference_ = false;
+  fall_counter_ = 0;
   policy_action_.setZero(param_->num_actions);
   ref_jvel_.setZero(rl_teleop::UdpReferenceReceiver::kNumJoints);
 
@@ -87,6 +88,25 @@ bool RlTeleopRunner::Enter() {
 void RlTeleopRunner::Run() {
   UpdateState();
   UpdateReference();
+
+  // Fall detection: base tilted > ~60 deg from upright for 0.5s -> stop
+  // executing the policy (on hardware: stop fighting the floor). Damps to
+  // zero targets at low gains until the operator exits the mode.
+  {
+    Eigen::Matrix3d robot_rot = RobotBaseRotation() * robot_rot0_.transpose();
+    double up_z = robot_rot(2, 2);  // world-z component of base up-axis
+    fall_counter_ = (up_z < 0.5) ? fall_counter_ + 1 : 0;
+    if (fall_counter_ == 25) {
+      LOG(WARNING) << "rl_teleop: FALL detected (base tilt > 60 deg) - policy halted, "
+                   << "damping. LB+RB or mode exit to recover.";
+    }
+  }
+  if (fall_counter_ >= 25) {
+    q_des_ = q_actual_;  // damp in place: hold measured pose at PD, no policy
+    SendMotorCommand();
+    return;
+  }
+
   if (have_reference_) {
     CalculateMotorCommand();
   } else {

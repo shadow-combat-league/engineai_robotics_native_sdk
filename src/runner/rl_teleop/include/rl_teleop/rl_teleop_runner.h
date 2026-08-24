@@ -100,6 +100,7 @@ class RlTeleopRunner : public MotionRunner {
   Eigen::Vector3d imu_install_bias_ = Eigen::Vector3d::Zero();
   int transition_iter_ = 0;
   int stale_log_counter_ = 0;
+  int fall_counter_ = 0;
 };
 
 }  // namespace runner
