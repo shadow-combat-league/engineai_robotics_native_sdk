@@ -1,6 +1,7 @@
 #include "rl_teleop/rl_teleop_runner.h"
 
 #include <glog/logging.h>
+#include <fstream>
 #include <sstream>
 
 #include "math/interpolation.h"
@@ -284,6 +285,22 @@ void RlTeleopRunner::CalculateMotorCommand() {
       ss << policy_action_(i) << (i + 1 < policy_action_.size() ? "," : "");
     LOG(INFO) << "rl_teleop ACT[" << dump_count << "] : " << ss.str();
     ++dump_count;
+  }
+
+  // Flight recorder: every cycle -> ./rl_teleop_log.csv (repo dir, visible on
+  // host through the docker mount). Columns: obs(127|124), act(15),
+  // q_actual(25 obs order), q_des(25 obs order).
+  {
+    static std::ofstream flight("rl_teleop_log.csv", std::ios::trunc);
+    if (flight.is_open()) {
+      flight.precision(6);
+      for (int i = 0; i < obs.size(); ++i) flight << obs(i) << ",";
+      for (int i = 0; i < policy_action_.size(); ++i) flight << policy_action_(i) << ",";
+      Eigen::VectorXd qo = q_actual_(obs_joint_idx_);
+      for (int i = 0; i < qo.size(); ++i) flight << qo(i) << ",";
+      Eigen::VectorXd qd_cmd = q_des_(obs_joint_idx_);
+      for (int i = 0; i < qd_cmd.size(); ++i) flight << qd_cmd(i) << (i + 1 < qd_cmd.size() ? "," : "\n");
+    }
   }
   policy_action_ = policy_action_.cwiseMax(-param_->action_clip).cwiseMin(param_->action_clip);
 
