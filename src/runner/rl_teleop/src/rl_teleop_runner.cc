@@ -78,7 +78,8 @@ bool RlTeleopRunner::Enter() {
     LOG(INFO) << "rl_teleop: raw imu quat at entry (upright): w=" << q.w()
               << " x=" << q.x() << " y=" << q.y() << " z=" << q.z();
   }
-  LOG(INFO) << "rl_teleop: entered. Waiting for reference stream on UDP :" << param_->udp_port
+  LOG(INFO) << "rl_teleop: build " << __DATE__ << " " << __TIME__
+            << " — entered. Waiting for reference stream on UDP :" << param_->udp_port
             << " (obs " << (param_->use_anchor_pos ? 127 : 124) << "-dim)";
   return true;
 }
