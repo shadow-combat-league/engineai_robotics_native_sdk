@@ -8,7 +8,11 @@
 policy_path: rl_teleop/policy/policy.mnn
 num_actions: 15
 action_clip: 100.0
-transition_time: 2.0
+# Short blend (vendor uses 0.3): a long blend makes the policy fight the
+# interpolation — it winds up through last_action while the robot ignores it,
+# then the wound-up targets hit as the blend completes (measured: act ramp
+# 0.65->3.3 in 0.2s, fall at ~0.5s with 2.0s blend)
+transition_time: 0.2
 
 use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
 
