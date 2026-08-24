@@ -329,7 +329,14 @@ void RlTeleopRunner::CalculateMotorCommand() {
     Eigen::VectorXd qo = q_actual_(obs_joint_idx_);
     for (int i = 0; i < qo.size(); ++i) flight_log_ << qo(i) << ",";
     Eigen::VectorXd qd_cmd = q_des_(obs_joint_idx_);
-    for (int i = 0; i < qd_cmd.size(); ++i) flight_log_ << qd_cmd(i) << (i + 1 < qd_cmd.size() ? "," : "\n");
+    for (int i = 0; i < qd_cmd.size(); ++i) flight_log_ << qd_cmd(i) << ",";
+    // raw imu quat (wxyz) + latest received reference quat (wxyz): lets the
+    // host-side analyzer check component conventions directly
+    Eigen::Quaterniond iq = data_store_->imu_info.Get()->quaternion;
+    flight_log_ << iq.w() << "," << iq.x() << "," << iq.y() << "," << iq.z() << ",";
+    const auto& fr = receiver_->Latest();
+    flight_log_ << fr.quat_wxyz(0) << "," << fr.quat_wxyz(1) << ","
+                << fr.quat_wxyz(2) << "," << fr.quat_wxyz(3) << "\n";
   }
   policy_action_ = policy_action_.cwiseMax(-param_->action_clip).cwiseMin(param_->action_clip);
 
