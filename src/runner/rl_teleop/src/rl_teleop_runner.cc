@@ -187,8 +187,12 @@ void RlTeleopRunner::UpdateReference() {
 
   if (got_new && frame.seq != last_ref_seq_) {
     double now = frame.recv_time;
-    double dt = (last_ref_time_ > 0.0) ? (now - last_ref_time_) : 0.02;
-    dt = std::max(dt, 1e-3);
+    // Nominal publisher period, NOT measured arrival dt: UDP arrival jitter
+    // would inject spikes into the finite-difference reference velocity.
+    // Account for dropped packets via the seq gap instead.
+    uint32_t seq_gap = (last_ref_seq_ > 0 && frame.seq > last_ref_seq_)
+                           ? (frame.seq - last_ref_seq_) : 1;
+    double dt = 0.02 * static_cast<double>(seq_gap);
 
     // Alignment on the first packet. The sim IMU is a SITE with a fixed
     // mount rotation C on the base: measured M(t) = W(t)*C (right-mult).
