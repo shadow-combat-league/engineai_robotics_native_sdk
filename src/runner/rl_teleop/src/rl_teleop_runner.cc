@@ -70,6 +70,14 @@ bool RlTeleopRunner::Enter() {
     LOG(INFO) << "rl_teleop: built-in standing reference active (policy holds stand)";
   }
 
+  {
+    // Diagnostic: robot is upright here (entered from pd_stand), so the true
+    // orientation is yaw-only: quat ~ (w=cos(y/2), 0, 0, z=sin(y/2)).
+    // Large x/y components => component-order scramble in the imu pipeline.
+    Eigen::Quaterniond q = data_store_->imu_info.Get()->quaternion;
+    LOG(INFO) << "rl_teleop: raw imu quat at entry (upright): w=" << q.w()
+              << " x=" << q.x() << " y=" << q.y() << " z=" << q.z();
+  }
   LOG(INFO) << "rl_teleop: entered. Waiting for reference stream on UDP :" << param_->udp_port
             << " (obs " << (param_->use_anchor_pos ? 127 : 124) << "-dim)";
   return true;
