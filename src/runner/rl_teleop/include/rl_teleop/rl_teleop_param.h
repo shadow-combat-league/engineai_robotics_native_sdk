@@ -51,6 +51,10 @@ class RlTeleopParam : public BasicParam {
 
   // Observation options
   bool use_anchor_pos = true;      // gen-two (127-dim) vs legacy (124-dim)
+  // Joints whose measured velocity is zeroed in the obs (vendor configs mask
+  // ankle velocities on this stack — the estimates are noisy and destabilize
+  // velocity-consuming policies)
+  std::vector<std::string> qd_zero_joint_names;
   double ref_jvel_clip = 12.0;     // rad/s clip on reference joint velocity
   double ref_jvel_alpha = 0.3;     // EMA new-sample weight for ref jvel
 

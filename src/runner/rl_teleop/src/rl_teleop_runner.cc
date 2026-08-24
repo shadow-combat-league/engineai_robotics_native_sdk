@@ -115,6 +115,7 @@ void RlTeleopRunner::Init() {
   };
   action_pos_in_obs_ = pos_in_obs(param_->action_joint_names);
   motion_pos_in_obs_ = pos_in_obs(param_->motion_driven_joint_names);
+  qd_zero_pos_in_obs_ = pos_in_obs(param_->qd_zero_joint_names);
 
   // Full-order control vectors from the name-keyed joints map
   const int n = static_cast<int>(model_param_->num_total_joints);
@@ -243,9 +244,13 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
     obs.segment(k, 3) = w_real; k += 3;
   }
 
-  // proprioception (Isaac obs order)
+  // proprioception (Isaac obs order); masked joints get zero velocity
   obs.segment(k, nj) = q_actual_(obs_joint_idx_) - default_joint_q_(obs_joint_idx_); k += nj;
-  obs.segment(k, nj) = qd_actual_(obs_joint_idx_); k += nj;
+  {
+    Eigen::VectorXd qd_obs = qd_actual_(obs_joint_idx_);
+    for (int p : qd_zero_pos_in_obs_) qd_obs(p) = 0.0;
+    obs.segment(k, nj) = qd_obs; k += nj;
+  }
   obs.segment(k, na) = policy_action_; k += na;
 
   return obs.cast<float>();

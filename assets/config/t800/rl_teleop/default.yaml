@@ -11,6 +11,11 @@ action_clip: 100.0
 transition_time: 2.0
 
 use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
+
+# Mask ankle velocities in the obs (vendor convention: these estimates are
+# noisy on this stack and destabilize velocity-consuming policies)
+qd_zero_joint_names: [J04_ANKLE_PITCH_L, J05_ANKLE_ROLL_L,
+  J10_ANKLE_PITCH_R, J11_ANKLE_ROLL_R]
 ref_jvel_clip: 12.0
 ref_jvel_alpha: 0.3
 
