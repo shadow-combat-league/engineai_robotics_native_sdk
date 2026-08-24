@@ -24,7 +24,11 @@ Eigen::Matrix3d YawRotation(const Eigen::Matrix3d& R) {
 
 }  // namespace
 
-void RlTeleopRunner::SetupContext() { data_store_->parallel_by_classic_parser.store(false); }
+// classic parser (like pd_stand): our policy commands serial joint space.
+// The RL examples use false because THEIR policies were trained against the
+// non-classic ankle parsing; with false, our ankle targets were mangled
+// (flight log: ankle tracking err 0.14 rad standing -> hip-roll windup -> fall).
+void RlTeleopRunner::SetupContext() { data_store_->parallel_by_classic_parser.store(true); }
 void RlTeleopRunner::TeardownContext() {}
 
 bool RlTeleopRunner::Enter() {
