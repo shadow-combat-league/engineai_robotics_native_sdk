@@ -15,6 +15,12 @@ Eigen::Matrix3d QuatWxyzToRot(const Eigen::Vector4d& q) {
   return Eigen::Quaterniond(q(0), q(1), q(2), q(3)).normalized().toRotationMatrix();
 }
 
+// Yaw-only rotation matrix extracted from R (heading about world z).
+Eigen::Matrix3d YawRotation(const Eigen::Matrix3d& R) {
+  double yaw = std::atan2(R(1, 0), R(0, 0));
+  return Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+}
+
 }  // namespace
 
 void RlTeleopRunner::SetupContext() { data_store_->parallel_by_classic_parser.store(false); }
@@ -167,15 +173,16 @@ void RlTeleopRunner::UpdateReference() {
     double dt = (last_ref_time_ > 0.0) ? (now - last_ref_time_) : 0.02;
     dt = std::max(dt, 1e-3);
 
-    // Initial-relative alignment on the first packet: capture both the
-    // robot's and the reference's orientation (both standing upright) and
-    // henceforth compare CHANGES from those. Any constant IMU mount or
-    // convention offset cancels exactly — the sim's absolute IMU quat is NOT
-    // world-conventional (measured ~90 deg off), and the vendor's own
-    // runners avoid absolute orientation for the same reason.
+    // Alignment on the first packet. The sim IMU is a SITE with a fixed
+    // mount rotation C on the base: measured M(t) = W(t)*C (right-mult).
+    // With the robot upright at entry (pd_stand) we define the common frame
+    // as the robot's entry frame, so the true orientation is
+    //   R_robot(t) = M(t) * M(0)^T          (mount cancels on the RIGHT).
+    // The reference stream is a clean world measurement; align its heading
+    // only: R_ref(t) = Yaw(ref0)^T * W_ref(t).
     if (!yaw_aligned_) {
-      robot_rot0_ = RobotBaseRotation();
-      ref_rot0_ = QuatWxyzToRot(frame.quat_wxyz);
+      robot_rot0_ = RobotBaseRotation();  // M(0)
+      ref_rot0_ = YawRotation(QuatWxyzToRot(frame.quat_wxyz));
       yaw_aligned_ = true;
       prev_ref_jpos_ = frame.jpos;
       ref_jvel_.setZero();
@@ -191,7 +198,7 @@ void RlTeleopRunner::UpdateReference() {
     prev_ref_jpos_ = frame.jpos;
 
     ref_jpos_ = frame.jpos;
-    ref_rot_ = ref_rot0_.transpose() * QuatWxyzToRot(frame.quat_wxyz);  // ref-relative
+    ref_rot_ = ref_rot0_.transpose() * QuatWxyzToRot(frame.quat_wxyz);  // heading-aligned
     last_ref_seq_ = frame.seq;
     last_ref_time_ = now;
     have_reference_ = true;
@@ -225,23 +232,22 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
     obs.segment(k, 3).setZero(); k += 3;
   }
 
-  // anchor orientation error: first two COLUMNS of R_robot_rel^T * R_ref_rel
-  // (both initial-relative), flattened ROW-major to match numpy's
-  // mat[:, :2].reshape(-1)
-  Eigen::Matrix3d robot_rel = robot_rot0_.transpose() * RobotBaseRotation();
-  Eigen::Matrix3d rel = robot_rel.transpose() * ref_rot_;
+  // anchor orientation error: first two COLUMNS of R_robot^T * R_ref in the
+  // common (robot-entry) frame, flattened ROW-major to match numpy's
+  // mat[:, :2].reshape(-1). Mount offset cancels on the RIGHT (see above).
+  Eigen::Matrix3d robot_rot = RobotBaseRotation() * robot_rot0_.transpose();
+  Eigen::Matrix3d rel = robot_rot.transpose() * ref_rot_;
   obs(k + 0) = rel(0, 0); obs(k + 1) = rel(0, 1);
   obs(k + 2) = rel(1, 0); obs(k + 3) = rel(1, 1);
   obs(k + 4) = rel(2, 0); obs(k + 5) = rel(2, 1);
   k += 6;
 
-  // base angular velocity in base frame (same construction as mimic runner)
+  // base angular velocity in BASE frame. The sim publishes frameangvel =
+  // WORLD-frame angular velocity; rotate into the (mount-corrected) base.
   {
-    Eigen::Matrix3d R_install = math::RollPitchYawd(imu_install_bias_).ToRotationMatrix().matrix();
-    Eigen::Matrix3d R_local = math::RotationMatrixd(data_store_->imu_info.Get()->quaternion).matrix();
-    Eigen::Matrix3d R_real = R_local * R_install.transpose();
-    Eigen::Vector3d w_real = R_real.transpose() * R_local * data_store_->imu_info.Get()->angular_velocity;
-    obs.segment(k, 3) = w_real; k += 3;
+    Eigen::Vector3d w_world = data_store_->imu_info.Get()->angular_velocity;
+    obs.segment(k, 3) = robot_rot.transpose() * w_world;
+    k += 3;
   }
 
   // proprioception (Isaac obs order); masked joints get zero velocity
