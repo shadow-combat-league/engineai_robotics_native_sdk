@@ -1,6 +1,7 @@
 #include "rl_teleop/rl_teleop_runner.h"
 
 #include <glog/logging.h>
+#include <sstream>
 
 #include "math/interpolation.h"
 #include "math/roll_pitch_yaw.h"
@@ -251,7 +252,27 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
 
 void RlTeleopRunner::CalculateMotorCommand() {
   Eigen::VectorXf obs = BuildObservation();
+
+  // Debug: dump the first few observation/action pairs for offline diffing
+  // against the Python deploy sim (deploy/sim_teleop.py) on the same clip.
+  static int dump_count = 0;
+  if (dump_count < 3) {
+    std::ostringstream ss;
+    ss.precision(5);
+    for (int i = 0; i < obs.size(); ++i) ss << obs(i) << (i + 1 < obs.size() ? "," : "");
+    LOG(INFO) << "rl_teleop OBS[" << dump_count << "] dim=" << obs.size() << " : " << ss.str();
+  }
+
   policy_action_ = policy_net_->Inference(obs).cast<double>();
+
+  if (dump_count < 3) {
+    std::ostringstream ss;
+    ss.precision(5);
+    for (int i = 0; i < policy_action_.size(); ++i)
+      ss << policy_action_(i) << (i + 1 < policy_action_.size() ? "," : "");
+    LOG(INFO) << "rl_teleop ACT[" << dump_count << "] : " << ss.str();
+    ++dump_count;
+  }
   policy_action_ = policy_action_.cwiseMax(-param_->action_clip).cwiseMin(param_->action_clip);
 
   // Targets: default + scaled action for action joints; reference passthrough
