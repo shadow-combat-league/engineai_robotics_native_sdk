@@ -23,6 +23,10 @@ qd_zero_joint_names: [J04_ANKLE_PITCH_L, J05_ANKLE_ROLL_L,
 ref_jvel_clip: 12.0
 ref_jvel_alpha: 0.3
 
+# Policy runs immediately on a built-in standing reference; UDP stream takes
+# over when packets arrive
+builtin_stand_reference: true
+
 udp_port: 47800
 ref_stale_timeout: 0.5
 

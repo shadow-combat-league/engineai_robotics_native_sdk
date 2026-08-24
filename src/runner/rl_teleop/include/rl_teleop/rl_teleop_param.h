@@ -58,6 +58,11 @@ class RlTeleopParam : public BasicParam {
   double ref_jvel_clip = 12.0;     // rad/s clip on reference joint velocity
   double ref_jvel_alpha = 0.3;     // EMA new-sample weight for ref jvel
 
+  // Start executing the policy immediately with a built-in standing
+  // reference (default pose, upright, zero velocity) instead of holding the
+  // entry pose until the first UDP packet. The stream takes over on arrival.
+  bool builtin_stand_reference = true;
+
   // Reference stream (UDP)
   int udp_port = 47800;
   double ref_stale_timeout = 0.5;  // s without packets -> hold last reference

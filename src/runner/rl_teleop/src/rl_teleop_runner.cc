@@ -53,6 +53,18 @@ bool RlTeleopRunner::Enter() {
   data_store_->joint_info.GetState(data::JointInfoType::kPosition, initial_joint_q_);
   q_des_ = initial_joint_q_;
 
+  if (param_->builtin_stand_reference) {
+    // Run the policy immediately against a standing reference: default pose,
+    // upright orientation, zero velocity. Equivalent to sim_teleop --hold.
+    // The mount offset is captured NOW (robot upright in pd_stand).
+    robot_rot0_ = RobotBaseRotation();
+    ref_rot_ = Eigen::Matrix3d::Identity();
+    ref_jpos_ = default_joint_q_(obs_joint_idx_);
+    ref_jvel_.setZero();
+    have_reference_ = true;
+    LOG(INFO) << "rl_teleop: built-in standing reference active (policy holds stand)";
+  }
+
   LOG(INFO) << "rl_teleop: entered. Waiting for reference stream on UDP :" << param_->udp_port
             << " (obs " << (param_->use_anchor_pos ? 127 : 124) << "-dim)";
   return true;

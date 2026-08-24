@@ -20,6 +20,7 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
   LOAD_PARAM_DEFAULT(ref_jvel_clip, 12.0);
   LOAD_PARAM_DEFAULT(ref_jvel_alpha, 0.3);
 
+  LOAD_PARAM_DEFAULT(builtin_stand_reference, true);
   LOAD_PARAM(udp_port);
   LOAD_PARAM_DEFAULT(ref_stale_timeout, 0.5);
 
