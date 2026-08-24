@@ -1,0 +1,43 @@
+#include "rl_teleop/rl_teleop_param.h"
+
+namespace data {
+
+RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
+  LOAD_PARAM(policy_path);
+  LOAD_PARAM(num_actions);
+  LOAD_PARAM(action_clip);
+  LOAD_PARAM(transition_time);
+
+  LOAD_PARAM(obs_joint_names);
+  LOAD_PARAM(action_joint_names);
+  LOAD_PARAM(motion_driven_joint_names);
+  LOAD_PARAM(action_scale);
+
+  joints = common::ScopedParameterGetter<std::map<std::string, TeleopJointConfig>>::Get(scope_, "joints");
+
+  LOAD_PARAM(use_anchor_pos);
+  LOAD_PARAM_DEFAULT(ref_jvel_clip, 12.0);
+  LOAD_PARAM_DEFAULT(ref_jvel_alpha, 0.3);
+
+  LOAD_PARAM(udp_port);
+  LOAD_PARAM_DEFAULT(ref_stale_timeout, 0.5);
+
+  LOAD_PARAM(torque_limit);
+  LOAD_PARAM_DEFAULT(max_lower_body_torque, 500.0);
+  LOAD_PARAM_DEFAULT(lower_body_joint_count, 12);
+
+  // Sanity checks: fail loudly at load time, not mid-motion
+  if (static_cast<int>(action_joint_names.size()) != num_actions) {
+    throw std::runtime_error("rl_teleop: action_joint_names size != num_actions");
+  }
+  if (action_scale.size() != action_joint_names.size()) {
+    throw std::runtime_error("rl_teleop: action_scale size != action_joint_names size");
+  }
+  for (const auto& name : obs_joint_names) {
+    if (joints.find(name) == joints.end()) {
+      throw std::runtime_error("rl_teleop: joint missing from joints map: " + name);
+    }
+  }
+}
+
+}  // namespace data

@@ -34,8 +34,20 @@ tasks:
     manual_transition:
       - passive
       - walk
-      - dance      
+      - dance
+      - rl_teleop
     key: [LB, A]
+
+  - motion: rl_teleop
+    period: 0.02
+    runner:
+      - name: rl_teleop_runner
+        enabled: true
+        param_tag: rl_teleop
+    manual_transition:
+      - passive
+      - pd_stand
+    key: [RB, A]
 
   - motion: walk
     period: 0.01
