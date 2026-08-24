@@ -15,12 +15,6 @@ Eigen::Matrix3d QuatWxyzToRot(const Eigen::Vector4d& q) {
   return Eigen::Quaterniond(q(0), q(1), q(2), q(3)).normalized().toRotationMatrix();
 }
 
-// Yaw-only rotation matrix extracted from R (heading about world z).
-Eigen::Matrix3d YawRotation(const Eigen::Matrix3d& R) {
-  double yaw = std::atan2(R(1, 0), R(0, 0));
-  return Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
-}
-
 }  // namespace
 
 void RlTeleopRunner::SetupContext() { data_store_->parallel_by_classic_parser.store(false); }
@@ -172,15 +166,20 @@ void RlTeleopRunner::UpdateReference() {
     double dt = (last_ref_time_ > 0.0) ? (now - last_ref_time_) : 0.02;
     dt = std::max(dt, 1e-3);
 
-    // Yaw alignment on the first packet: rotate the reference world frame so
-    // its heading matches the robot's IMU heading at mode entry.
+    // Initial-relative alignment on the first packet: capture both the
+    // robot's and the reference's orientation (both standing upright) and
+    // henceforth compare CHANGES from those. Any constant IMU mount or
+    // convention offset cancels exactly — the sim's absolute IMU quat is NOT
+    // world-conventional (measured ~90 deg off), and the vendor's own
+    // runners avoid absolute orientation for the same reason.
     if (!yaw_aligned_) {
-      Eigen::Matrix3d ref_rot = QuatWxyzToRot(frame.quat_wxyz);
-      yaw_align_ = YawRotation(RobotBaseRotation()) * YawRotation(ref_rot).transpose();
+      robot_rot0_ = RobotBaseRotation();
+      ref_rot0_ = QuatWxyzToRot(frame.quat_wxyz);
       yaw_aligned_ = true;
       prev_ref_jpos_ = frame.jpos;
       ref_jvel_.setZero();
-      LOG(INFO) << "rl_teleop: reference stream live (seq " << frame.seq << "), yaw aligned.";
+      LOG(INFO) << "rl_teleop: reference stream live (seq " << frame.seq
+                << "), initial frames captured.";
     }
 
     // Reference joint velocity: EMA finite difference, clipped (mirrors
@@ -191,7 +190,7 @@ void RlTeleopRunner::UpdateReference() {
     prev_ref_jpos_ = frame.jpos;
 
     ref_jpos_ = frame.jpos;
-    ref_rot_ = yaw_align_ * QuatWxyzToRot(frame.quat_wxyz);
+    ref_rot_ = ref_rot0_.transpose() * QuatWxyzToRot(frame.quat_wxyz);  // ref-relative
     last_ref_seq_ = frame.seq;
     last_ref_time_ = now;
     have_reference_ = true;
@@ -225,9 +224,11 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
     obs.segment(k, 3).setZero(); k += 3;
   }
 
-  // anchor orientation error: first two COLUMNS of R_robot^T * R_ref,
-  // flattened ROW-major to match numpy's mat[:, :2].reshape(-1)
-  Eigen::Matrix3d rel = RobotBaseRotation().transpose() * ref_rot_;
+  // anchor orientation error: first two COLUMNS of R_robot_rel^T * R_ref_rel
+  // (both initial-relative), flattened ROW-major to match numpy's
+  // mat[:, :2].reshape(-1)
+  Eigen::Matrix3d robot_rel = robot_rot0_.transpose() * RobotBaseRotation();
+  Eigen::Matrix3d rel = robot_rel.transpose() * ref_rot_;
   obs(k + 0) = rel(0, 0); obs(k + 1) = rel(0, 1);
   obs(k + 2) = rel(1, 0); obs(k + 3) = rel(1, 1);
   obs(k + 4) = rel(2, 0); obs(k + 5) = rel(2, 1);

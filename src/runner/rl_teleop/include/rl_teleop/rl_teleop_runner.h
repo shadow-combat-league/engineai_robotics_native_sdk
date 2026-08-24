@@ -88,7 +88,10 @@ class RlTeleopRunner : public MotionRunner {
   double last_ref_time_ = 0.0;
   bool have_reference_ = false;
   bool yaw_aligned_ = false;
-  Eigen::Matrix3d yaw_align_ = Eigen::Matrix3d::Identity();
+  // Initial frames captured at first packet; all orientations are used
+  // relative to these so constant IMU mount/convention offsets cancel.
+  Eigen::Matrix3d robot_rot0_ = Eigen::Matrix3d::Identity();
+  Eigen::Matrix3d ref_rot0_ = Eigen::Matrix3d::Identity();
 
   Eigen::Vector3d imu_install_bias_ = Eigen::Vector3d::Zero();
   int transition_iter_ = 0;
