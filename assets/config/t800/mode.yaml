@@ -90,5 +90,6 @@ mode:
     - tag: rl_stance_to_supine
       scope: rl_stance_to_supine/default
     - tag: rl_dance_example
-      scope: rl_dance_example/default    - tag: rl_teleop
+      scope: rl_dance_example/default
+    - tag: rl_teleop
       scope: rl_teleop/default
