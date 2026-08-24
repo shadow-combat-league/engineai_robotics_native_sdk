@@ -16,10 +16,11 @@ transition_time: 0.2
 
 use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
 
-# Mask ankle velocities in the obs (vendor convention: these estimates are
-# noisy on this stack and destabilize velocity-consuming policies)
-qd_zero_joint_names: [J04_ANKLE_PITCH_L, J05_ANKLE_ROLL_L,
-  J10_ANKLE_PITCH_R, J11_ANKLE_ROLL_R]
+# Ankle-velocity masking (vendor convention for THEIR policies): tested and
+# reverted — our policy trained with real ankle velocities, and the masking
+# was addressing a symptom later traced to the transition-blend windup.
+# Re-enable with the four ankle joints if hardware ankle qd proves noisy.
+qd_zero_joint_names: []
 ref_jvel_clip: 12.0
 ref_jvel_alpha: 0.3
 
