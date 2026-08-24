@@ -17,8 +17,11 @@ ref_jvel_alpha: 0.3
 udp_port: 47800
 ref_stale_timeout: 0.5
 
-torque_limit: true
-max_lower_body_torque: 500.0
+# torque_limit false for SIM (the 500 Nm lower-body budget throttles push-off
+# and reads as "weak legs"). MUST be re-enabled with tuned values before
+# HARDWARE deployment — raise budget to ~1000 and validate in sim first.
+torque_limit: false
+max_lower_body_torque: 1000.0
 lower_body_joint_count: 12
 
 # Isaac observation order — MUST match the policy export
