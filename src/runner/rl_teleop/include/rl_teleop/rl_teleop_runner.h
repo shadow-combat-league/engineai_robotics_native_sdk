@@ -19,6 +19,8 @@
 //    after Enter(), so the operator's world frame and the robot's frame
 //    agree on heading at mode entry.
 
+#include <fstream>
+
 #include "basic/motion_runner.h"
 #include "basic/runner_registry.h"
 #include "math/mnn_model.h"
@@ -94,6 +96,7 @@ class RlTeleopRunner : public MotionRunner {
   Eigen::Matrix3d robot_rot0_ = Eigen::Matrix3d::Identity();
   Eigen::Matrix3d ref_rot0_ = Eigen::Matrix3d::Identity();
 
+  std::ofstream flight_log_;
   Eigen::Vector3d imu_install_bias_ = Eigen::Vector3d::Zero();
   int transition_iter_ = 0;
   int stale_log_counter_ = 0;

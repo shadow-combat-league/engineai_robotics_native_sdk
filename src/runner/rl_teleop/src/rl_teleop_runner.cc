@@ -53,6 +53,11 @@ bool RlTeleopRunner::Enter() {
   data_store_->joint_info.GetState(data::JointInfoType::kPosition, initial_joint_q_);
   q_des_ = initial_joint_q_;
 
+  flight_log_.close();
+  flight_log_.open(common::PathJoin(common::GlobalPathManager::GetInstance().GetConfigPath(),
+                                    "rl_teleop/flight_log.csv"),
+                   std::ios::trunc);
+
   if (param_->builtin_stand_reference) {
     // Run the policy immediately against a standing reference: default pose,
     // upright orientation, zero velocity. Equivalent to sim_teleop --hold.
@@ -307,23 +312,16 @@ void RlTeleopRunner::CalculateMotorCommand() {
     ++dump_count;
   }
 
-  // Flight recorder: every cycle -> ./rl_teleop_log.csv (repo dir, visible on
-  // host through the docker mount). Columns: obs(127|124), act(15),
-  // q_actual(25 obs order), q_des(25 obs order).
-  {
-    static std::ofstream flight(
-        common::PathJoin(common::GlobalPathManager::GetInstance().GetConfigPath(),
-                         "rl_teleop/flight_log.csv"),
-        std::ios::trunc);
-    if (flight.is_open()) {
-      flight.precision(6);
-      for (int i = 0; i < obs.size(); ++i) flight << obs(i) << ",";
-      for (int i = 0; i < policy_action_.size(); ++i) flight << policy_action_(i) << ",";
-      Eigen::VectorXd qo = q_actual_(obs_joint_idx_);
-      for (int i = 0; i < qo.size(); ++i) flight << qo(i) << ",";
-      Eigen::VectorXd qd_cmd = q_des_(obs_joint_idx_);
-      for (int i = 0; i < qd_cmd.size(); ++i) flight << qd_cmd(i) << (i + 1 < qd_cmd.size() ? "," : "\n");
-    }
+  // Flight recorder: truncated at each mode entry (one clean take per
+  // attempt). Columns: obs(127|124), act(15), q_actual(25), q_des(25).
+  if (flight_log_.is_open()) {
+    flight_log_.precision(6);
+    for (int i = 0; i < obs.size(); ++i) flight_log_ << obs(i) << ",";
+    for (int i = 0; i < policy_action_.size(); ++i) flight_log_ << policy_action_(i) << ",";
+    Eigen::VectorXd qo = q_actual_(obs_joint_idx_);
+    for (int i = 0; i < qo.size(); ++i) flight_log_ << qo(i) << ",";
+    Eigen::VectorXd qd_cmd = q_des_(obs_joint_idx_);
+    for (int i = 0; i < qd_cmd.size(); ++i) flight_log_ << qd_cmd(i) << (i + 1 < qd_cmd.size() ? "," : "\n");
   }
   policy_action_ = policy_action_.cwiseMax(-param_->action_clip).cwiseMin(param_->action_clip);
 
