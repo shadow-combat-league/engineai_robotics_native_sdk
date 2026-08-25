@@ -31,10 +31,10 @@ builtin_stand_reference: true
 udp_port: 47800
 ref_stale_timeout: 0.5
 
-# torque_limit false for SIM (the 500 Nm lower-body budget throttles push-off
-# and reads as "weak legs"). MUST be re-enabled with tuned values before
-# HARDWARE deployment — raise budget to ~1000 and validate in sim first.
-torque_limit: false
+# Torque limits ON (hardware-faithful): per-joint tau_max + 1000 Nm
+# lower-body budget. The original problem was the choking 500 budget, not
+# limits per se — do not lower the budget without re-gating walking clips.
+torque_limit: true
 max_lower_body_torque: 1000.0
 lower_body_joint_count: 12
 
