@@ -24,11 +24,11 @@ Eigen::Matrix3d YawRotation(const Eigen::Matrix3d& R) {
 
 }  // namespace
 
-// classic parser (like pd_stand): our policy commands serial joint space.
-// The RL examples use false because THEIR policies were trained against the
-// non-classic ankle parsing; with false, our ankle targets were mangled
-// (flight log: ankle tracking err 0.14 rad standing -> hip-roll windup -> fall).
-void RlTeleopRunner::SetupContext() { data_store_->parallel_by_classic_parser.store(true); }
+// A/B NOTE: this flag's earlier test ran on a stale binary and proved
+// nothing. Every vendor RL mode uses false; pd_stand uses true. Current
+// setting: false (vendor RL convention) — re-flip to true if ankle tracking
+// degrades while STANDING (the symptom that originally motivated true).
+void RlTeleopRunner::SetupContext() { data_store_->parallel_by_classic_parser.store(false); }
 void RlTeleopRunner::TeardownContext() {}
 
 bool RlTeleopRunner::Enter() {
