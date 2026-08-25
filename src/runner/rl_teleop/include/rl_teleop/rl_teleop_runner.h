@@ -74,6 +74,7 @@ class RlTeleopRunner : public MotionRunner {
   // Full-order control vectors (distributed from the name-keyed config)
   Eigen::VectorXd default_joint_q_;
   Eigen::VectorXd joint_kp_, joint_kd_, tau_max_;
+  Eigen::VectorXd q_min_, q_max_;
   Eigen::VectorXd action_scale_;
 
   // State

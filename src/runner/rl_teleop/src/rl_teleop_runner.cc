@@ -180,6 +180,8 @@ void RlTeleopRunner::Init() {
   joint_kp_ = Eigen::VectorXd::Zero(n);
   joint_kd_ = Eigen::VectorXd::Zero(n);
   tau_max_ = Eigen::VectorXd::Constant(n, std::numeric_limits<double>::infinity());
+  q_min_ = Eigen::VectorXd::Constant(n, -6.5);
+  q_max_ = Eigen::VectorXd::Constant(n, 6.5);
   for (const auto& [name, jc] : param_->joints) {
     auto it = model_param_->joint_id_in_total_limb.find(name);
     if (it == model_param_->joint_id_in_total_limb.end()) {
@@ -189,6 +191,8 @@ void RlTeleopRunner::Init() {
     joint_kp_(it->second) = jc.kp;
     joint_kd_(it->second) = jc.kd;
     if (jc.tau_max > 0.0) tau_max_(it->second) = jc.tau_max;
+    q_min_(it->second) = jc.q_min;
+    q_max_(it->second) = jc.q_max;
   }
 
   action_scale_ = Eigen::Map<const Eigen::VectorXd>(param_->action_scale.data(),
@@ -389,6 +393,11 @@ void RlTeleopRunner::CalculateMotorCommand() {
     q_des_ = math::LinearInterpolate(initial_joint_q_, q_des_, ratio);
     ++transition_iter_;
   }
+
+  // Clamp targets to physical joint ranges: beyond-range targets excite the
+  // downstream command pipeline in sim (measured 1.1 rad ankle demands vs a
+  // 0.68 rad range at the turn trip) and slam hard stops on hardware.
+  q_des_ = q_des_.cwiseMax(q_min_).cwiseMin(q_max_);
 }
 
 double RlTeleopRunner::ComputeTransitionRatio() const {

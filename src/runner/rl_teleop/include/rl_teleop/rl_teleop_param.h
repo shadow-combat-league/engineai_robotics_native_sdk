@@ -25,6 +25,8 @@ class TeleopJointConfig {
   double kp = 50.0;         // PD stiffness
   double kd = 1.0;          // PD damping
   double tau_max = 100.0;   // per-joint torque cap
+  double q_min = -6.5;      // commanded-target clamp (joint range)
+  double q_max = 6.5;
 };
 
 class RlTeleopParam : public BasicParam {
@@ -87,6 +89,8 @@ struct convert<data::TeleopJointConfig> {
     if (node["kp"]) v.kp = node["kp"].as<double>();
     if (node["kd"]) v.kd = node["kd"].as<double>();
     if (node["tau_max"]) v.tau_max = node["tau_max"].as<double>();
+    if (node["q_min"]) v.q_min = node["q_min"].as<double>();
+    if (node["q_max"]) v.q_max = node["q_max"].as<double>();
     return true;
   }
 };

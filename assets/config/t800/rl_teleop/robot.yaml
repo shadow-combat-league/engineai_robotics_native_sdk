@@ -67,28 +67,28 @@ motion_driven_joint_names: [J13_SHOULDER_PITCH_L, J18_SHOULDER_PITCH_R,
 
 # Per-joint control values (name-keyed; distributed by joint_id at runtime)
 joints:
-  J00_HIP_PITCH_L:      {q_default: -0.06, kp: 180.0, kd: 5.0, tau_max: 415.0}
-  J01_HIP_ROLL_L:       {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 370.0}
-  J02_HIP_YAW_L:        {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 222.0}
-  J03_KNEE_PITCH_L:     {q_default:  0.12, kp: 180.0, kd: 5.0, tau_max: 415.0}
-  J04_ANKLE_PITCH_L:    {q_default: -0.06, kp: 40.0,  kd: 2.0, tau_max: 160.0}
-  J05_ANKLE_ROLL_L:     {q_default:  0.0,  kp: 40.0,  kd: 2.0, tau_max: 160.0}
-  J06_HIP_PITCH_R:      {q_default: -0.06, kp: 180.0, kd: 5.0, tau_max: 415.0}
-  J07_HIP_ROLL_R:       {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 370.0}
-  J08_HIP_YAW_R:        {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 222.0}
-  J09_KNEE_PITCH_R:     {q_default:  0.12, kp: 180.0, kd: 5.0, tau_max: 415.0}
-  J10_ANKLE_PITCH_R:    {q_default: -0.06, kp: 40.0,  kd: 2.0, tau_max: 160.0}
-  J11_ANKLE_ROLL_R:     {q_default:  0.0,  kp: 40.0,  kd: 2.0, tau_max: 160.0}
-  J12_TORSO_YAW:        {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 222.0}
-  J13_SHOULDER_PITCH_L: {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0}
-  J14_SHOULDER_ROLL_L:  {q_default:  0.15, kp: 50.0,  kd: 2.5, tau_max: 160.0}
-  J15_SHOULDER_YAW_L:   {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0}
-  J16_ELBOW_PITCH_L:    {q_default: -0.25, kp: 50.0,  kd: 2.5, tau_max: 160.0}
-  J17_ELBOW_YAW_L:      {q_default:  0.0,  kp: 50.0,  kd: 1.2, tau_max: 52.0}
-  J18_SHOULDER_PITCH_R: {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0}
-  J19_SHOULDER_ROLL_R:  {q_default: -0.15, kp: 50.0,  kd: 2.5, tau_max: 160.0}
-  J20_SHOULDER_YAW_R:   {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0}
-  J21_ELBOW_PITCH_R:    {q_default: -0.25, kp: 50.0,  kd: 2.5, tau_max: 160.0}
-  J22_ELBOW_YAW_R:      {q_default:  0.0,  kp: 50.0,  kd: 1.2, tau_max: 52.0}
-  J23_HEAD_PITCH:       {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0}
-  J24_HEAD_YAW:         {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0}
+  J00_HIP_PITCH_L:      {q_default: -0.06, kp: 180.0, kd: 5.0, tau_max: 415.0, q_min: -3.316, q_max: 2.269}
+  J01_HIP_ROLL_L:       {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 370.0, q_min: -1.082, q_max: 2.059}
+  J02_HIP_YAW_L:        {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 222.0, q_min: -1.422, q_max: 3.602}
+  J03_KNEE_PITCH_L:     {q_default:  0.12, kp: 180.0, kd: 5.0, tau_max: 415.0, q_min: -0.262, q_max: 2.355}
+  J04_ANKLE_PITCH_L:    {q_default: -0.06, kp: 40.0,  kd: 2.0, tau_max: 160.0, q_min: -0.681, q_max: 0.681}
+  J05_ANKLE_ROLL_L:     {q_default:  0.0,  kp: 40.0,  kd: 2.0, tau_max: 160.0, q_min: -0.349, q_max: 0.175}
+  J06_HIP_PITCH_R:      {q_default: -0.06, kp: 180.0, kd: 5.0, tau_max: 415.0, q_min: -3.316, q_max: 2.269}
+  J07_HIP_ROLL_R:       {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 370.0, q_min: -2.059, q_max: 1.082}
+  J08_HIP_YAW_R:        {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 222.0, q_min: -3.602, q_max: 1.422}
+  J09_KNEE_PITCH_R:     {q_default:  0.12, kp: 180.0, kd: 5.0, tau_max: 415.0, q_min: -0.262, q_max: 2.355}
+  J10_ANKLE_PITCH_R:    {q_default: -0.06, kp: 40.0,  kd: 2.0, tau_max: 160.0, q_min: -0.681, q_max: 0.681}
+  J11_ANKLE_ROLL_R:     {q_default:  0.0,  kp: 40.0,  kd: 2.0, tau_max: 160.0, q_min: -0.175, q_max: 0.349}
+  J12_TORSO_YAW:        {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 222.0, q_min: -4.381, q_max: 1.239}
+  J13_SHOULDER_PITCH_L: {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.967, q_max: 2.793}
+  J14_SHOULDER_ROLL_L:  {q_default:  0.15, kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -0.384, q_max: 2.443}
+  J15_SHOULDER_YAW_L:   {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.618, q_max: 2.618}
+  J16_ELBOW_PITCH_L:    {q_default: -0.25, kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.286, q_max: 0.262}
+  J17_ELBOW_YAW_L:      {q_default:  0.0,  kp: 50.0,  kd: 1.2, tau_max: 52.0, q_min: -2.618, q_max: 2.618}
+  J18_SHOULDER_PITCH_R: {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.967, q_max: 2.793}
+  J19_SHOULDER_ROLL_R:  {q_default: -0.15, kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.443, q_max: 0.384}
+  J20_SHOULDER_YAW_R:   {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.618, q_max: 2.618}
+  J21_ELBOW_PITCH_R:    {q_default: -0.25, kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.286, q_max: 0.262}
+  J22_ELBOW_YAW_R:      {q_default:  0.0,  kp: 50.0,  kd: 1.2, tau_max: 52.0, q_min: -2.618, q_max: 2.618}
+  J23_HEAD_PITCH:       {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0, q_min: -0.523, q_max: 0.523}
+  J24_HEAD_YAW:         {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0, q_min: -1.222, q_max: 1.222}
