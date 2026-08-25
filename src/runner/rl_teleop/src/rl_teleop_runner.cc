@@ -219,6 +219,16 @@ void RlTeleopRunner::UpdateReference() {
   const auto& frame = receiver_->Latest();
   if (!frame.valid) return;
 
+  // Publisher restart (seq reset) => treat as a fresh stream: re-align its
+  // heading to the robot's CURRENT orientation instead of lunging at the
+  // discontinuity between old end-state and new start-state.
+  if (got_new && have_reference_ && frame.seq < last_ref_seq_) {
+    LOG(INFO) << "rl_teleop: reference stream restarted (seq " << last_ref_seq_
+              << " -> " << frame.seq << ") - re-aligning";
+    yaw_aligned_ = false;
+    robot_rot0_ = RobotBaseRotation();
+  }
+
   if (got_new && frame.seq != last_ref_seq_) {
     double now = frame.recv_time;
     // Nominal publisher period, NOT measured arrival dt: UDP arrival jitter

@@ -10,7 +10,7 @@ GROUP_ID="$(id -g)"
 USER_HOME="$HOME"
 
 # --- Config constants ---
-NVIDIA_GPU_AVAILABLE="n"
+NVIDIA_GPU_AVAILABLE="y"
 WORKSPACE_DIR="${SCRIPT_DIR}/../"
 PROJECT_NAME="engineai_robotics_env"
 SOURCE_IMAGE="ghcr.io/engineai-robotics/engineai_robotics_env:latest"
