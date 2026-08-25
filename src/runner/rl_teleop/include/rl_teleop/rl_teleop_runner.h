@@ -80,6 +80,8 @@ class RlTeleopRunner : public MotionRunner {
   // State
   Eigen::VectorXd q_actual_, qd_actual_;
   Eigen::VectorXd q_des_, qd_des_, tau_ff_des_;
+  Eigen::VectorXd q_des_filt_;      // action LPF state (primed on first tick)
+  bool lpf_primed_ = false;
   Eigen::VectorXd initial_joint_q_;
   Eigen::VectorXd policy_action_;
 

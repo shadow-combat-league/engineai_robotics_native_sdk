@@ -16,13 +16,23 @@ transition_time: 0.2
 
 use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
 
-# Ankle-velocity masking (vendor convention for THEIR policies): tested and
-# reverted — our policy trained with real ankle velocities, and the masking
-# was addressing a symptom later traced to the transition-blend windup.
-# Re-enable with the four ankle joints if hardware ankle qd proves noisy.
-qd_zero_joint_names: []
+# Ankle-velocity masking ENABLED on hardware (2026-08-25): first session was
+# audibly buzzing at stand — real encoder qd noise drives policy chatter and
+# kd-torque noise. Vendor masks exactly these joints for their own policies,
+# and training used 3x noise on ankle joint_vel, so the policy tolerates it.
+# Gate in SDK sim before a robot session (sim config keeps [] since sim qd is
+# clean — this line is the hardware-vs-sim A/B knob).
+qd_zero_joint_names: [J04_ANKLE_PITCH_L, J05_ANKLE_ROLL_L,
+  J10_ANKLE_PITCH_R, J11_ANKLE_ROLL_R]
 ref_jvel_clip: 12.0
 ref_jvel_alpha: 0.3
+
+# Target low-pass (1.0 = off): kills the 25 Hz action chatter that implicit
+# PhysX drives absorbed in training but explicit hardware PD reproduces as
+# audible buzz. 0.5 gated in the MuJoCo rig (walking02 + 40 ms staleness,
+# 0 falls, ~30% less target jitter). Do not go below 0.4 — over-lag
+# destabilizes (measured: 0.35 -> fall).
+action_lpf_alpha: 0.5
 
 # Policy runs immediately on a built-in standing reference; UDP stream takes
 # over when packets arrive
@@ -31,9 +41,8 @@ builtin_stand_reference: true
 udp_port: 47800
 ref_stale_timeout: 0.5
 
-# torque_limit false for SIM (the 500 Nm lower-body budget throttles push-off
-# and reads as "weak legs"). MUST be re-enabled with tuned values before
-# HARDWARE deployment — raise budget to ~1000 and validate in sim first.
+# Torque limits ON at vendor actuator spec; 2000 Nm lower-body budget
+# (the original 500 budget choked push-off — do not lower without re-gating)
 torque_limit: true
 max_lower_body_torque: 2000.0
 

@@ -24,6 +24,12 @@ qd_zero_joint_names: []
 ref_jvel_clip: 12.0
 ref_jvel_alpha: 0.3
 
+# Target low-pass (1.0 = off): kills the 25 Hz action chatter that implicit
+# PhysX drives absorbed in training but explicit PD reproduces as visible
+# vibration. 0.5 gated in the MuJoCo rig (walking02 + 40 ms staleness,
+# 0 falls, ~30% less target jitter; 0.35 over-lags -> fall).
+action_lpf_alpha: 0.5
+
 # Policy runs immediately on a built-in standing reference; UDP stream takes
 # over when packets arrive
 builtin_stand_reference: true

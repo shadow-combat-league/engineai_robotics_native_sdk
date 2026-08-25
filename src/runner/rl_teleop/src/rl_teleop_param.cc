@@ -20,6 +20,7 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
   LOAD_PARAM_DEFAULT(qd_zero_joint_names, std::vector<std::string>{});
   LOAD_PARAM_DEFAULT(ref_jvel_clip, 12.0);
   LOAD_PARAM_DEFAULT(ref_jvel_alpha, 0.3);
+  LOAD_PARAM_DEFAULT(action_lpf_alpha, 1.0);
 
   LOAD_PARAM_DEFAULT(builtin_stand_reference, true);
   LOAD_PARAM(udp_port);
@@ -30,6 +31,9 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
   LOAD_PARAM_DEFAULT(lower_body_joint_count, 12);
 
   // Sanity checks: fail loudly at load time, not mid-motion
+  if (action_lpf_alpha <= 0.0 || action_lpf_alpha > 1.0) {
+    throw std::runtime_error("rl_teleop: action_lpf_alpha must be in (0, 1]");
+  }
   if (static_cast<int>(action_joint_names.size()) != num_actions) {
     throw std::runtime_error("rl_teleop: action_joint_names size != num_actions");
   }

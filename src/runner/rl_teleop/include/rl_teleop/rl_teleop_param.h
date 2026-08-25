@@ -64,6 +64,15 @@ class RlTeleopParam : public BasicParam {
   double ref_jvel_clip = 12.0;     // rad/s clip on reference joint velocity
   double ref_jvel_alpha = 0.3;     // EMA new-sample weight for ref jvel
 
+  // One-pole low-pass on the commanded joint targets (1.0 = off). Training
+  // uses implicit PhysX drives that filter 25 Hz action chatter for free;
+  // explicit PD (sim + hardware) tracks it faithfully -> visible vibration
+  // and audible buzz. 0.5 measured in the MuJoCo rig: ~30% less target
+  // jitter, kills the 25 Hz band, 0 falls on walking02 at 40 ms staleness
+  // (0.35 over-lags and destabilizes — do not go below ~0.4).
+  // last_action in the obs stays RAW, matching the training convention.
+  double action_lpf_alpha = 1.0;
+
   // Start executing the policy immediately with a built-in standing
   // reference (default pose, upright, zero velocity) instead of holding the
   // entry pose until the first UDP packet. The stream takes over on arrival.

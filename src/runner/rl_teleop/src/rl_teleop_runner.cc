@@ -47,6 +47,7 @@ bool RlTeleopRunner::Enter() {
   yaw_aligned_ = false;
   have_reference_ = false;
   fall_counter_ = 0;
+  lpf_primed_ = false;
   policy_action_.setZero(param_->num_actions);
   ref_jvel_.setZero(rl_teleop::UdpReferenceReceiver::kNumJoints);
 
@@ -398,6 +399,18 @@ void RlTeleopRunner::CalculateMotorCommand() {
   // downstream command pipeline in sim (measured 1.1 rad ankle demands vs a
   // 0.68 rad range at the turn trip) and slam hard stops on hardware.
   q_des_ = q_des_.cwiseMax(q_min_).cwiseMin(q_max_);
+
+  // One-pole low-pass on the commanded targets (see action_lpf_alpha in the
+  // param header). last_action_ fed back to the obs stays raw.
+  if (param_->action_lpf_alpha < 1.0) {
+    if (!lpf_primed_) {
+      q_des_filt_ = q_des_;
+      lpf_primed_ = true;
+    }
+    q_des_filt_ = param_->action_lpf_alpha * q_des_ +
+                  (1.0 - param_->action_lpf_alpha) * q_des_filt_;
+    q_des_ = q_des_filt_;
+  }
 }
 
 double RlTeleopRunner::ComputeTransitionRatio() const {
