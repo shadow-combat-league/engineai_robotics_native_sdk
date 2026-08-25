@@ -24,11 +24,11 @@ Eigen::Matrix3d YawRotation(const Eigen::Matrix3d& R) {
 
 }  // namespace
 
-// A/B NOTE: this flag's earlier test ran on a stale binary and proved
-// nothing. Every vendor RL mode uses false; pd_stand uses true. Current
-// setting: false (vendor RL convention) — re-flip to true if ankle tracking
-// degrades while STANDING (the symptom that originally motivated true).
-void RlTeleopRunner::SetupContext() { data_store_->parallel_by_classic_parser.store(false); }
+// A/B COMPLETE (2026-08-25, fresh binaries both arms): false = under-driven
+// even standing (vendor RL modes use it because THEIR policies trained
+// against that transform); true (classic, like pd_stand) = correct for our
+// serial joint-space policy. Do not flip again.
+void RlTeleopRunner::SetupContext() { data_store_->parallel_by_classic_parser.store(true); }
 void RlTeleopRunner::TeardownContext() {}
 
 bool RlTeleopRunner::Enter() {
