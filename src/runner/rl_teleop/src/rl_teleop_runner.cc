@@ -307,11 +307,12 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
   obs(k + 4) = rel(2, 0); obs(k + 5) = rel(2, 1);
   k += 6;
 
-  // base angular velocity in BASE frame. The sim publishes frameangvel =
-  // WORLD-frame angular velocity; rotate into the (mount-corrected) base.
+  // base angular velocity in BASE frame. Sim: frameangvel is WORLD-frame ->
+  // rotate into the (mount-corrected) base. Hardware: the IMU gyro already
+  // reports body-frame -> pass through.
   {
-    Eigen::Vector3d w_world = data_store_->imu_info.Get()->angular_velocity;
-    obs.segment(k, 3) = robot_rot.transpose() * w_world;
+    Eigen::Vector3d w = data_store_->imu_info.Get()->angular_velocity;
+    obs.segment(k, 3) = param_->imu_ang_vel_world ? (robot_rot.transpose() * w).eval() : w;
     k += 3;
   }
 

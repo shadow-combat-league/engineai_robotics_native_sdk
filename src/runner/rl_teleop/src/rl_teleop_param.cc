@@ -16,6 +16,7 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
   joints = common::ScopedParameterGetter<std::map<std::string, TeleopJointConfig>>::Get(scope_, "joints");
 
   LOAD_PARAM(use_anchor_pos);
+  LOAD_PARAM_DEFAULT(imu_ang_vel_world, true);
   LOAD_PARAM_DEFAULT(qd_zero_joint_names, std::vector<std::string>{});
   LOAD_PARAM_DEFAULT(ref_jvel_clip, 12.0);
   LOAD_PARAM_DEFAULT(ref_jvel_alpha, 0.3);

@@ -51,6 +51,10 @@ class RlTeleopParam : public BasicParam {
 
   // Observation options
   bool use_anchor_pos = true;      // gen-two (127-dim) vs legacy (124-dim)
+  // Angular-velocity frame of imu_info: the SIM publishes world-frame
+  // (frameangvel of the imu site); real IMU gyros report body-frame.
+  // true = rotate world->base (sim); false = pass through (hardware).
+  bool imu_ang_vel_world = true;
   // Joints whose measured velocity is zeroed in the obs (vendor configs mask
   // ankle velocities on this stack — the estimates are noisy and destabilize
   // velocity-consuming policies)

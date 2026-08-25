@@ -52,7 +52,7 @@ mode:
     - tag: rl_dance_example
       scope: rl_dance_example/default
     - tag: rl_teleop
-      scope: rl_teleop/default
+      scope: rl_teleop/robot
 
   sim:
     - tag: resident_task
