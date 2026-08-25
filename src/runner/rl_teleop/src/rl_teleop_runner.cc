@@ -215,6 +215,16 @@ void RlTeleopRunner::Init() {
 void RlTeleopRunner::UpdateState() {
   data_store_->joint_info.GetState(data::JointInfoType::kPosition, q_actual_);
   data_store_->joint_info.GetState(data::JointInfoType::kVelocity, qd_actual_);
+
+  // PROBE (anchor_pos v2 feasibility): is the base state estimator populated?
+  // If this stays zero, the estimator does not run in this deployment and
+  // anchor_pos_b must stay zeros; if it tracks walking, wire it up.
+  {
+    const auto base = data_store_->base_state_in_world.Get();
+    LOG_EVERY_N(INFO, 250) << "rl_teleop probe base_state_in_world pos=["
+                           << base->frame.pose.position.transpose() << "] vel=["
+                           << base->frame.twist.linear.transpose() << "]";
+  }
 }
 
 Eigen::Matrix3d RlTeleopRunner::RobotBaseRotation() const {
