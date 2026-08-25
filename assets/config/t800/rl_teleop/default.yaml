@@ -24,11 +24,13 @@ qd_zero_joint_names: []
 ref_jvel_clip: 12.0
 ref_jvel_alpha: 0.3
 
-# Target low-pass (1.0 = off): kills the 25 Hz action chatter that implicit
-# PhysX drives absorbed in training but explicit PD reproduces as visible
-# vibration. 0.5 gated in the MuJoCo rig (walking02 + 40 ms staleness,
-# 0 falls, ~30% less target jitter; 0.35 over-lags -> fall).
-action_lpf_alpha: 0.5
+# Target low-pass (1.0 = off). 0.5 REVERTED for sim (2026-08-25): its ~20 ms
+# group delay stacks on the SDK loop's ~40 ms obs staleness + the vendor
+# motor pipeline's own lag — walking02 then falls at clip ~4.3 s in PLAIN
+# walking (two runs, content-locked), a section every pre-LPF run cleared.
+# The sim vibration this filter treated is cosmetic (sim obs are clean; the
+# buzz problem is hardware-only). Real fix is training-side action-rate.
+action_lpf_alpha: 1.0
 
 # Policy runs immediately on a built-in standing reference; UDP stream takes
 # over when packets arrive

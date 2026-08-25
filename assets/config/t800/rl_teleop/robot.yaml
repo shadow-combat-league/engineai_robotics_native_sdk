@@ -27,12 +27,13 @@ qd_zero_joint_names: [J04_ANKLE_PITCH_L, J05_ANKLE_ROLL_L,
 ref_jvel_clip: 12.0
 ref_jvel_alpha: 0.3
 
-# Target low-pass (1.0 = off): kills the 25 Hz action chatter that implicit
-# PhysX drives absorbed in training but explicit hardware PD reproduces as
-# audible buzz. 0.5 gated in the MuJoCo rig (walking02 + 40 ms staleness,
-# 0 falls, ~30% less target jitter). Do not go below 0.4 — over-lag
-# destabilizes (measured: 0.35 -> fall).
-action_lpf_alpha: 0.5
+# Target low-pass (1.0 = off): trims the highest-frequency action chatter
+# (audible buzz). 0.7 = ~8.6 ms group delay. 0.5 measured DESTABILIZING in
+# the SDK sim loop (walking02 falls at clip ~4.3 s in plain walking — its
+# 20 ms lag on top of loop staleness exceeds the DR envelope), so hardware
+# gets the mild setting; the ankle qd masking above is the primary buzz fix.
+# Only consider 0.5 if hardware standing is rock-solid AND buzz persists.
+action_lpf_alpha: 0.7
 
 # Policy runs immediately on a built-in standing reference; UDP stream takes
 # over when packets arrive
