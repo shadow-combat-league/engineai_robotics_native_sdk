@@ -96,6 +96,9 @@ class RlTeleopRunner : public MotionRunner {
   Eigen::VectorXd resume_from_jpos_;
   Eigen::Matrix3d resume_from_rot_ = Eigen::Matrix3d::Identity();
   double resume_blend_ = 1.0;         // 1 = no blend in progress
+  // Reference-orientation slew limiter state (see ref_ang_slew)
+  Eigen::Matrix3d prev_ref_rot_ = Eigen::Matrix3d::Identity();
+  bool slew_primed_ = false;
   Eigen::Matrix3d ref_rot_ = Eigen::Matrix3d::Identity();
   uint32_t last_ref_seq_ = 0;
   double last_ref_time_ = 0.0;

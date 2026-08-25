@@ -266,6 +266,7 @@ void RlTeleopRunner::UpdateReference() {
       robot_rot0_ = RobotBaseRotation();  // M(0)
       ref_rot0_ = YawRotation(QuatWxyzToRot(frame.quat_wxyz));
       yaw_aligned_ = true;
+      slew_primed_ = false;
       prev_ref_jpos_ = frame.jpos;
       ref_jvel_.setZero();
       LOG(INFO) << "rl_teleop: reference stream live (seq " << frame.seq
@@ -281,6 +282,26 @@ void RlTeleopRunner::UpdateReference() {
 
     ref_jpos_ = frame.jpos;
     ref_rot_ = ref_rot0_.transpose() * QuatWxyzToRot(frame.quat_wxyz);  // heading-aligned
+
+    // Slew-limit the reference orientation rate: consume large rotations
+    // (spins beyond the plant's yaw ceiling) at ref_ang_slew instead of
+    // letting the anchor error grow uncloseably. Inert for normal walking.
+    if (!slew_primed_) {
+      prev_ref_rot_ = ref_rot_;
+      slew_primed_ = true;
+    } else if (param_->ref_ang_slew < 10.0) {
+      Eigen::AngleAxisd aa(prev_ref_rot_.transpose() * ref_rot_);
+      const double max_step = param_->ref_ang_slew * dt;
+      if (std::abs(aa.angle()) > max_step) {
+        ref_rot_ = prev_ref_rot_ *
+                   Eigen::AngleAxisd(max_step * (aa.angle() > 0 ? 1.0 : -1.0),
+                                     aa.axis()).toRotationMatrix();
+      }
+      prev_ref_rot_ = ref_rot_;
+    } else {
+      prev_ref_rot_ = ref_rot_;
+    }
+
     last_ref_seq_ = frame.seq;
     last_ref_time_ = now;
     have_reference_ = true;

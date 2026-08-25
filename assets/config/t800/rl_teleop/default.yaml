@@ -32,6 +32,13 @@ ref_jvel_alpha: 0.3
 # buzz problem is hardware-only). Real fix is training-side action-rate.
 action_lpf_alpha: 1.0
 
+# Reference base-orientation slew limit (rad/s; >=10 disables). The plant's
+# measured yaw-rate ceiling is ~2.4-2.6 rad/s; walking02's pirouette commands
+# 4.05 and the uncloseable anchor error topples the robot at the spin exit.
+# 2.2 keeps the reference reachable — the robot turns at its own pace and
+# arrives late instead of falling. Inert for normal walking (<=0.35 rad/s).
+ref_ang_slew: 2.2
+
 # Policy runs immediately on a built-in standing reference; UDP stream takes
 # over when packets arrive
 builtin_stand_reference: true

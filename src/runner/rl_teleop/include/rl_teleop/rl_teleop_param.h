@@ -64,6 +64,15 @@ class RlTeleopParam : public BasicParam {
   double ref_jvel_clip = 12.0;     // rad/s clip on reference joint velocity
   double ref_jvel_alpha = 0.3;     // EMA new-sample weight for ref jvel
 
+  // Slew limit on the reference BASE ORIENTATION rate (rad/s). The clip can
+  // command spins beyond the plant's yaw-rate ceiling (walking02 pirouette:
+  // 4.05 rad/s commanded vs ~2.4-2.6 achievable) — the anchor error then
+  // grows uncloseably and the robot falls at the spin exit. Limiting the
+  // reference to just under the ceiling lets the robot turn at its own pace
+  // with a small, closable error (same principle as the publisher's 3 m/s
+  // root-position slew). 12.0 = effectively off; ~2.2 recommended.
+  double ref_ang_slew = 12.0;
+
   // One-pole low-pass on the commanded joint targets (1.0 = off). Training
   // uses implicit PhysX drives that filter 25 Hz action chatter for free;
   // explicit PD (sim + hardware) tracks it faithfully -> visible vibration

@@ -35,6 +35,11 @@ ref_jvel_alpha: 0.3
 # Only consider 0.5 if hardware standing is rock-solid AND buzz persists.
 action_lpf_alpha: 0.7
 
+# Reference base-orientation slew limit (rad/s; >=10 disables) — protects
+# hardware from fast commanded spins (clip pirouettes, abrupt live-PICO
+# turns) the plant cannot follow. See default.yaml for the measured basis.
+ref_ang_slew: 2.2
+
 # Policy runs immediately on a built-in standing reference; UDP stream takes
 # over when packets arrive
 builtin_stand_reference: true
