@@ -17,8 +17,11 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
 
   LOAD_PARAM(use_anchor_pos);
   LOAD_PARAM_DEFAULT(anchor_pos_source, std::string("none"));
-  if (anchor_pos_source != "none" && anchor_pos_source != "estimator") {
-    throw std::runtime_error("rl_teleop: anchor_pos_source must be 'none' or 'estimator'");
+  LOAD_PARAM_DEFAULT(anchor_vel_tau, 2.0);
+  if (anchor_pos_source != "none" && anchor_pos_source != "estimator" &&
+      anchor_pos_source != "velocity") {
+    throw std::runtime_error(
+        "rl_teleop: anchor_pos_source must be 'none', 'estimator', or 'velocity'");
   }
   LOAD_PARAM_DEFAULT(imu_ang_vel_world, true);
   LOAD_PARAM_DEFAULT(qd_zero_joint_names, std::vector<std::string>{});

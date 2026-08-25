@@ -281,6 +281,8 @@ void RlTeleopRunner::UpdateReference() {
       ref_jvel_.setZero();
       // anchor_pos v2: capture position anchors so displacements start at 0
       ref_pos0_ = frame.pos;
+      prev_ref_pos_ = frame.pos;
+      anchor_err_c_.setZero();
       {
         const auto base = data_store_->base_state_in_world.Get();
         est_pos0_ = base->frame.pose.position;
@@ -299,6 +301,23 @@ void RlTeleopRunner::UpdateReference() {
 
     ref_jpos_ = frame.jpos;
     ref_pos_curr_ = frame.pos;
+
+    // "velocity" anchor mode: integrate the velocity mismatch with a leak.
+    // v_ref from packet deltas (exact); v_robot from the estimator's twist
+    // (its instantaneous velocity is usable even though its integrated
+    // position under-reports). Entry-yaw common frame on both sides.
+    if (param_->anchor_pos_source == "velocity") {
+      Eigen::Vector3d v_ref_c = ref_rot0_.transpose() * (frame.pos - prev_ref_pos_) / dt;
+      const auto base = data_store_->base_state_in_world.Get();
+      Eigen::Vector3d v_rob_c = est_yaw0_.transpose() * base->frame.twist.linear;
+      anchor_err_c_ = std::exp(-dt / param_->anchor_vel_tau) * anchor_err_c_ +
+                      dt * (v_ref_c - v_rob_c);
+      LOG_EVERY_N(INFO, 50) << "rl_teleop anchor-vel: |v_ref|=" << v_ref_c.norm()
+                            << " |v_rob|=" << v_rob_c.norm()
+                            << " err=[" << anchor_err_c_.transpose() << "]";
+    }
+    prev_ref_pos_ = frame.pos;
+
     ref_rot_ = ref_rot0_.transpose() * QuatWxyzToRot(frame.quat_wxyz);  // heading-aligned
 
     // Slew-limit the reference orientation rate: consume large rotations
@@ -379,6 +398,9 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
       Eigen::Vector3d p_robot = est_yaw0_.transpose() * (base->frame.pose.position - est_pos0_);
       Eigen::Vector3d p_ref = ref_rot0_.transpose() * (ref_pos_curr_ - ref_pos0_);
       Eigen::Vector3d err = robot_rot.transpose() * (p_ref - p_robot);
+      obs.segment(k, 3) = err.cwiseMax(-1.0).cwiseMin(1.0);
+    } else if (param_->anchor_pos_source == "velocity" && yaw_aligned_) {
+      Eigen::Vector3d err = robot_rot.transpose() * anchor_err_c_;
       obs.segment(k, 3) = err.cwiseMax(-1.0).cwiseMin(1.0);
     } else {
       obs.segment(k, 3).setZero();

@@ -56,12 +56,16 @@ class RlTeleopParam : public BasicParam {
   // Source for the anchor_pos_b observation (gen-two policies):
   //   "none"      - feed zeros (v1 behavior; policy degrades to legacy-style
   //                 following with no distance feedback)
-  //   "estimator" - base_state_in_world displacement vs the streamed ref_pos,
-  //                 both expressed in the entry-yaw common frame, clipped
-  //                 +-1 m exactly like training/sim_teleop. Verified live in
-  //                 sim (probe 2026-08-25); training obs noise was +-0.25 m
-  //                 so moderate estimator error is in-distribution.
+  //   "estimator" - base_state_in_world displacement vs the streamed ref_pos.
+  //                 MEASURED HARMFUL (2026-08-25): the estimator's integrated
+  //                 position under-reports translation -> phantom lag error.
+  //   "velocity"  - leaky integral of (ref velocity - estimator velocity) in
+  //                 the entry-yaw common frame, ~2 s time constant, clipped
+  //                 +-1 m. Needs only short-horizon velocity quality, not
+  //                 consistent odometry: drift leaks away, a sustained lag
+  //                 saturates near the clip like training values.
   std::string anchor_pos_source = "none";
+  double anchor_vel_tau = 2.0;  // leak time constant (s) for "velocity" mode
   // Angular-velocity frame of imu_info: the SIM publishes world-frame
   // (frameangvel of the imu site); real IMU gyros report body-frame.
   // true = rotate world->base (sim); false = pass through (hardware).

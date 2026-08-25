@@ -105,6 +105,10 @@ class RlTeleopRunner : public MotionRunner {
   Eigen::Vector3d ref_pos0_ = Eigen::Vector3d::Zero();
   Eigen::Vector3d est_pos0_ = Eigen::Vector3d::Zero();
   Eigen::Matrix3d est_yaw0_ = Eigen::Matrix3d::Identity();
+  // "velocity" anchor mode: leaky integral of (v_ref - v_robot) in the
+  // entry-yaw common frame + previous packet position for v_ref
+  Eigen::Vector3d anchor_err_c_ = Eigen::Vector3d::Zero();
+  Eigen::Vector3d prev_ref_pos_ = Eigen::Vector3d::Zero();
   Eigen::Matrix3d ref_rot_ = Eigen::Matrix3d::Identity();
   uint32_t last_ref_seq_ = 0;
   double last_ref_time_ = 0.0;
