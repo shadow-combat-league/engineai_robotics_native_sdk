@@ -20,7 +20,7 @@ use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
 # trained with — with zeros the robot cannot perceive falling behind the
 # reference root (measured: forward-pitch collapse in the 1.67 m/s sprint).
 # Set to "none" to A/B back to v1 zeros.
-anchor_pos_source: estimator
+anchor_pos_source: none
 
 # Ankle-velocity masking (vendor convention for THEIR policies): tested and
 # reverted — our policy trained with real ankle velocities, and the masking
