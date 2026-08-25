@@ -89,6 +89,13 @@ class RlTeleopRunner : public MotionRunner {
   Eigen::VectorXd ref_jpos_;   // 25, Isaac order, yaw-aligned stream
   Eigen::VectorXd ref_jvel_;   // 25, EMA finite difference
   Eigen::VectorXd prev_ref_jpos_;
+  Eigen::VectorXd stand_ref_jpos_;    // default pose in obs order (safe hold)
+  // Resume blending: after a stream restart or stale gap, blend from the
+  // held reference into the incoming stream instead of snapping (a snap from
+  // a held mid-stride frame to clip start measured as the forward-fall cause)
+  Eigen::VectorXd resume_from_jpos_;
+  Eigen::Matrix3d resume_from_rot_ = Eigen::Matrix3d::Identity();
+  double resume_blend_ = 1.0;         // 1 = no blend in progress
   Eigen::Matrix3d ref_rot_ = Eigen::Matrix3d::Identity();
   uint32_t last_ref_seq_ = 0;
   double last_ref_time_ = 0.0;

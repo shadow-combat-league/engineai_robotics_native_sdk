@@ -48,6 +48,9 @@ bool RlTeleopRunner::Enter() {
   have_reference_ = false;
   fall_counter_ = 0;
   lpf_primed_ = false;
+  resume_blend_ = 1.0;
+  // Packets buffered from a previous session must never become the reference
+  receiver_->Reset();
   policy_action_.setZero(param_->num_actions);
   ref_jvel_.setZero(rl_teleop::UdpReferenceReceiver::kNumJoints);
 
@@ -206,6 +209,7 @@ void RlTeleopRunner::Init() {
   tau_ff_des_ = Eigen::VectorXd::Zero(n);
   ref_jpos_ = default_joint_q_(obs_joint_idx_);
   prev_ref_jpos_ = ref_jpos_;
+  stand_ref_jpos_ = ref_jpos_;
 }
 
 void RlTeleopRunner::UpdateState() {
@@ -224,14 +228,22 @@ void RlTeleopRunner::UpdateReference() {
   const auto& frame = receiver_->Latest();
   if (!frame.valid) return;
 
-  // Publisher restart (seq reset) => treat as a fresh stream: re-align its
-  // heading to the robot's CURRENT orientation instead of lunging at the
-  // discontinuity between old end-state and new start-state.
-  if (got_new && have_reference_ && frame.seq < last_ref_seq_) {
-    LOG(INFO) << "rl_teleop: reference stream restarted (seq " << last_ref_seq_
-              << " -> " << frame.seq << ") - re-aligning";
+  // Publisher restart (seq reset) OR resume after a stale gap => treat as a
+  // fresh stream: re-align its heading to the robot's CURRENT orientation and
+  // BLEND from the held reference into the new stream instead of snapping.
+  // (Measured 2026-08-25: held mid-stride frame -> clip-start snap put the
+  // robot 6.5 deg forward with wound-up ankles; it fell 4 s later.)
+  if (got_new && have_reference_ &&
+      (frame.seq < last_ref_seq_ ||
+       frame.recv_time - last_ref_time_ > param_->ref_stale_timeout)) {
+    LOG(INFO) << "rl_teleop: reference stream "
+              << (frame.seq < last_ref_seq_ ? "restarted" : "resumed after stale gap")
+              << " (seq " << last_ref_seq_ << " -> " << frame.seq
+              << ") - re-aligning and blending in";
     yaw_aligned_ = false;
-    robot_rot0_ = RobotBaseRotation();
+    resume_from_jpos_ = ref_jpos_;
+    resume_from_rot_ = ref_rot_;
+    resume_blend_ = 0.0;
   }
 
   if (got_new && frame.seq != last_ref_seq_) {
@@ -272,15 +284,34 @@ void RlTeleopRunner::UpdateReference() {
     last_ref_seq_ = frame.seq;
     last_ref_time_ = now;
     have_reference_ = true;
+
+    // Blend from the held reference into the (re)started stream over 0.5 s
+    if (resume_blend_ < 1.0) {
+      resume_blend_ = std::min(1.0, resume_blend_ + runner_period_ / 0.5);
+      const double r = resume_blend_;
+      ref_jpos_ = (1.0 - r) * resume_from_jpos_ + r * ref_jpos_;
+      Eigen::Quaterniond qa(resume_from_rot_), qb(ref_rot_);
+      ref_rot_ = qa.slerp(r, qb).toRotationMatrix();
+      // (ref_jvel restart is handled by the yaw re-align block above, which
+      // resets prev_ref_jpos_ to the raw stream on the first packet)
+    }
   }
 
   if (have_reference_ && receiver_->Staleness() > param_->ref_stale_timeout) {
-    // Hold the last reference (tracking policy holds pose); throttled warning.
+    // Decay the held reference to the built-in stand (default pose, upright
+    // at the current heading) with a ~1 s time constant. Holding an arbitrary
+    // frozen frame is NOT safe: a mid-stride frame is single-support and
+    // base-pitched (measured: held walking02 frame 824, 5.9 deg forward,
+    // robot leaned 6.5 deg and fell when the stream resumed).
     if (++stale_log_counter_ % 250 == 1) {
       LOG(WARNING) << "rl_teleop: reference stream stale for " << receiver_->Staleness()
-                   << "s - holding last reference";
+                   << "s - decaying to stand reference";
     }
     ref_jvel_.setZero();
+    const double k = runner_period_ / 1.0;  // ~1 s time constant
+    ref_jpos_ += k * (stand_ref_jpos_ - ref_jpos_);
+    Eigen::Quaterniond qr(ref_rot_), qup(YawRotation(ref_rot_));
+    ref_rot_ = qr.slerp(k, qup).toRotationMatrix();
   } else {
     stale_log_counter_ = 0;
   }

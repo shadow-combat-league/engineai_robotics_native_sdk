@@ -47,6 +47,12 @@ class UdpReferenceReceiver {
   // Seconds since the last packet (large if none yet).
   double Staleness() const;
 
+  // Drain and DISCARD everything buffered in the socket and invalidate the
+  // latest frame. Call on mode entry: packets from a previous session sit in
+  // the kernel buffer and would otherwise be adopted as a "fresh" reference
+  // (measured: a mid-stride walking02 frame held as the stand target).
+  void Reset();
+
  private:
   int fd_ = -1;
   ReferenceFrame latest_;

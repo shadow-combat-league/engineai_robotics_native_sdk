@@ -86,4 +86,19 @@ double UdpReferenceReceiver::Staleness() const {
   return MonotonicNow() - latest_.recv_time;
 }
 
+void UdpReferenceReceiver::Reset() {
+  if (fd_ >= 0) {
+    uint8_t buf[kPacketBytes];
+    int discarded = 0;
+    while (recv(fd_, buf, sizeof(buf), 0) >= 0) ++discarded;
+    if (discarded > 0) {
+      LOG(INFO) << "rl_teleop: discarded " << discarded
+                << " buffered reference packets from a previous session";
+    }
+  }
+  latest_.valid = false;
+  latest_.seq = 0;
+  latest_.recv_time = 0.0;
+}
+
 }  // namespace rl_teleop
