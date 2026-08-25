@@ -279,6 +279,13 @@ void RlTeleopRunner::UpdateReference() {
       slew_primed_ = false;
       prev_ref_jpos_ = frame.jpos;
       ref_jvel_.setZero();
+      // anchor_pos v2: capture position anchors so displacements start at 0
+      ref_pos0_ = frame.pos;
+      {
+        const auto base = data_store_->base_state_in_world.Get();
+        est_pos0_ = base->frame.pose.position;
+        est_yaw0_ = YawRotation(base->frame.pose.quaternion.toRotationMatrix());
+      }
       LOG(INFO) << "rl_teleop: reference stream live (seq " << frame.seq
                 << "), initial frames captured.";
     }
@@ -291,6 +298,7 @@ void RlTeleopRunner::UpdateReference() {
     prev_ref_jpos_ = frame.jpos;
 
     ref_jpos_ = frame.jpos;
+    ref_pos_curr_ = frame.pos;
     ref_rot_ = ref_rot0_.transpose() * QuatWxyzToRot(frame.quat_wxyz);  // heading-aligned
 
     // Slew-limit the reference orientation rate: consume large rotations
@@ -359,15 +367,28 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
   obs.segment(k, nj) = ref_jpos_; k += nj;
   obs.segment(k, nj) = ref_jvel_; k += nj;
 
-  // anchor position error in robot base frame — v1: zeros (see header note)
+  Eigen::Matrix3d robot_rot = RobotBaseRotation() * robot_rot0_.transpose();
+
+  // anchor position error in the robot base frame (training's
+  // subtract_frame_transforms, clipped +-1 m like deploy/sim_teleop.py).
+  // Both positions enter as displacements from their first-packet anchors,
+  // expressed in the entry-yaw common frame; "none" keeps v1 zeros.
   if (param_->use_anchor_pos) {
-    obs.segment(k, 3).setZero(); k += 3;
+    if (param_->anchor_pos_source == "estimator" && yaw_aligned_) {
+      const auto base = data_store_->base_state_in_world.Get();
+      Eigen::Vector3d p_robot = est_yaw0_.transpose() * (base->frame.pose.position - est_pos0_);
+      Eigen::Vector3d p_ref = ref_rot0_.transpose() * (ref_pos_curr_ - ref_pos0_);
+      Eigen::Vector3d err = robot_rot.transpose() * (p_ref - p_robot);
+      obs.segment(k, 3) = err.cwiseMax(-1.0).cwiseMin(1.0);
+    } else {
+      obs.segment(k, 3).setZero();
+    }
+    k += 3;
   }
 
   // anchor orientation error: first two COLUMNS of R_robot^T * R_ref in the
   // common (robot-entry) frame, flattened ROW-major to match numpy's
   // mat[:, :2].reshape(-1). Mount offset cancels on the RIGHT (see above).
-  Eigen::Matrix3d robot_rot = RobotBaseRotation() * robot_rot0_.transpose();
   Eigen::Matrix3d rel = robot_rot.transpose() * ref_rot_;
   obs(k + 0) = rel(0, 0); obs(k + 1) = rel(0, 1);
   obs(k + 2) = rel(1, 0); obs(k + 3) = rel(1, 1);

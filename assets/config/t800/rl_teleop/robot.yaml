@@ -15,6 +15,11 @@ action_clip: 100.0
 transition_time: 0.2
 
 use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
+# Keep zeros on hardware until the estimator-fed anchor_pos_b is gated in
+# sim AND the hardware estimator's translation quality is checked (probe
+# logs base_state_in_world every 5 s — compare against actual walked
+# distance on the gantry first).
+anchor_pos_source: none
 
 # Ankle-velocity masking ENABLED on hardware (2026-08-25): first session was
 # audibly buzzing at stand — real encoder qd noise drives policy chatter and

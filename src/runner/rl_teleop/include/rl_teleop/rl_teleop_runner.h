@@ -99,6 +99,12 @@ class RlTeleopRunner : public MotionRunner {
   // Reference-orientation slew limiter state (see ref_ang_slew)
   Eigen::Matrix3d prev_ref_rot_ = Eigen::Matrix3d::Identity();
   bool slew_primed_ = false;
+  // anchor_pos v2 (anchor_pos_source == "estimator"): entry anchors so both
+  // positions are used as displacements in the entry-yaw common frame
+  Eigen::Vector3d ref_pos_curr_ = Eigen::Vector3d::Zero();
+  Eigen::Vector3d ref_pos0_ = Eigen::Vector3d::Zero();
+  Eigen::Vector3d est_pos0_ = Eigen::Vector3d::Zero();
+  Eigen::Matrix3d est_yaw0_ = Eigen::Matrix3d::Identity();
   Eigen::Matrix3d ref_rot_ = Eigen::Matrix3d::Identity();
   uint32_t last_ref_seq_ = 0;
   double last_ref_time_ = 0.0;

@@ -53,6 +53,15 @@ class RlTeleopParam : public BasicParam {
 
   // Observation options
   bool use_anchor_pos = true;      // gen-two (127-dim) vs legacy (124-dim)
+  // Source for the anchor_pos_b observation (gen-two policies):
+  //   "none"      - feed zeros (v1 behavior; policy degrades to legacy-style
+  //                 following with no distance feedback)
+  //   "estimator" - base_state_in_world displacement vs the streamed ref_pos,
+  //                 both expressed in the entry-yaw common frame, clipped
+  //                 +-1 m exactly like training/sim_teleop. Verified live in
+  //                 sim (probe 2026-08-25); training obs noise was +-0.25 m
+  //                 so moderate estimator error is in-distribution.
+  std::string anchor_pos_source = "none";
   // Angular-velocity frame of imu_info: the SIM publishes world-frame
   // (frameangvel of the imu site); real IMU gyros report body-frame.
   // true = rotate world->base (sim); false = pass through (hardware).

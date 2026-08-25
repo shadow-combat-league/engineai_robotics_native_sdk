@@ -16,6 +16,10 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
   joints = common::ScopedParameterGetter<std::map<std::string, TeleopJointConfig>>::Get(scope_, "joints");
 
   LOAD_PARAM(use_anchor_pos);
+  LOAD_PARAM_DEFAULT(anchor_pos_source, std::string("none"));
+  if (anchor_pos_source != "none" && anchor_pos_source != "estimator") {
+    throw std::runtime_error("rl_teleop: anchor_pos_source must be 'none' or 'estimator'");
+  }
   LOAD_PARAM_DEFAULT(imu_ang_vel_world, true);
   LOAD_PARAM_DEFAULT(qd_zero_joint_names, std::vector<std::string>{});
   LOAD_PARAM_DEFAULT(ref_jvel_clip, 12.0);

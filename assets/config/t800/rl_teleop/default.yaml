@@ -15,6 +15,12 @@ action_clip: 100.0
 transition_time: 0.2
 
 use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
+# v2 (2026-08-25): feed anchor_pos_b from the base state estimator (verified
+# live via probe; z tracks falls). Closes the distance loop the policy was
+# trained with — with zeros the robot cannot perceive falling behind the
+# reference root (measured: forward-pitch collapse in the 1.67 m/s sprint).
+# Set to "none" to A/B back to v1 zeros.
+anchor_pos_source: estimator
 
 # Ankle-velocity masking (vendor convention for THEIR policies): tested and
 # reverted — our policy trained with real ankle velocities, and the masking
