@@ -36,7 +36,7 @@ ref_jvel_alpha: 0.3
 # walking (two runs, content-locked), a section every pre-LPF run cleared.
 # The sim vibration this filter treated is cosmetic (sim obs are clean; the
 # buzz problem is hardware-only). Real fix is training-side action-rate.
-action_lpf_alpha: 1.0
+action_lpf_alpha: 0.7
 
 # Reference base-orientation slew limit (rad/s; >=10 disables). The plant's
 # measured yaw-rate ceiling is ~2.4-2.6 rad/s; walking02's pirouette commands
