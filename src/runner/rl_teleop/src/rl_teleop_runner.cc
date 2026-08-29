@@ -78,9 +78,8 @@ bool RlTeleopRunner::Enter() {
     ref_jpos_ = initial_joint_q_(obs_joint_idx_);
     ref_jvel_.setZero();
     have_reference_ = true;
-    builtin_hold_ = true;  // hold THIS pose; do not decay-migrate to default
-    LOG(INFO) << "rl_teleop: built-in standing reference active (holding entry "
-              << "pose; max offset from default "
+    LOG(INFO) << "rl_teleop: built-in standing reference active (entry pose -> "
+              << "default stand via decay; max entry offset "
               << (initial_joint_q_(obs_joint_idx_) - default_joint_q_(obs_joint_idx_))
                      .cwiseAbs().maxCoeff() << " rad)";
   }
@@ -283,7 +282,6 @@ void RlTeleopRunner::UpdateReference() {
     // The reference stream is a clean world measurement; align its heading
     // only: R_ref(t) = Yaw(ref0)^T * W_ref(t).
     if (!yaw_aligned_) {
-      builtin_hold_ = false;  // live stream takes over (resume blend aligns)
       robot_rot0_ = RobotBaseRotation();  // M(0)
       ref_rot0_ = YawRotation(QuatWxyzToRot(frame.quat_wxyz));
       yaw_aligned_ = true;
@@ -366,14 +364,6 @@ void RlTeleopRunner::UpdateReference() {
     }
   }
 
-  if (builtin_hold_ && !receiver_->Latest().valid) {
-    // Built-in stand from pd_stand: the entry pose IS a stable stance —
-    // hold it exactly (zero tracking error, no loaded-leg twist). The
-    // decay-to-stand below is for MID-STREAM staleness, where the frozen
-    // frame may be single-support; it must not force a pose migration at
-    // entry (measured: the migration itself caused the entry stumble).
-    return;
-  }
   if (have_reference_ && receiver_->Staleness() > param_->ref_stale_timeout) {
     // Decay the held reference to the built-in stand (default pose, upright
     // at the current heading) with a ~1 s time constant. Holding an arbitrary
