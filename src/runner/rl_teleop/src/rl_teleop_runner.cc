@@ -64,24 +64,15 @@ bool RlTeleopRunner::Enter() {
                    std::ios::trunc);
 
   if (param_->builtin_stand_reference) {
-    // Run the policy immediately against a standing reference, STARTING AT
-    // THE MEASURED ENTRY POSE. pd_stand parks the robot away from the
-    // policy default (measured: hip yaws +-0.27 rad, elbows 0.15) — a
-    // reference that jumps straight to the default forces the policy to
-    // twist loaded legs at t=0 (the entry stumble). Starting the reference
-    // at the current pose makes entry a zero-error event; the stale-decay
-    // path (no packets -> decay to stand_ref_jpos_, ~1 s tau) then migrates
-    // the pose to the default stand as a slow commanded motion.
+    // Run the policy immediately against a standing reference: default pose,
+    // upright orientation, zero velocity. Equivalent to sim_teleop --hold.
     // The mount offset is captured NOW (robot upright in pd_stand).
     robot_rot0_ = RobotBaseRotation();
     ref_rot_ = Eigen::Matrix3d::Identity();
-    ref_jpos_ = initial_joint_q_(obs_joint_idx_);
+    ref_jpos_ = default_joint_q_(obs_joint_idx_);
     ref_jvel_.setZero();
     have_reference_ = true;
-    LOG(INFO) << "rl_teleop: built-in standing reference active (entry pose -> "
-              << "default stand via decay; max entry offset "
-              << (initial_joint_q_(obs_joint_idx_) - default_joint_q_(obs_joint_idx_))
-                     .cwiseAbs().maxCoeff() << " rad)";
+    LOG(INFO) << "rl_teleop: built-in standing reference active (policy holds stand)";
   }
 
   {
