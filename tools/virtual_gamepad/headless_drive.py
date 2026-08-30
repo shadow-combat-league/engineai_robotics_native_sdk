@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lcm  # noqa: E402
 from lcm_msgs.data import GamepadKeys  # noqa: E402
 
-BUTTON_INDEX = {"LB": 0, "RB": 1, "A": 2, "START": 7}
+BUTTON_INDEX = {"LB": 0, "RB": 1, "A": 2, "B": 3, "X": 4, "Y": 5, "START": 7}
 RATE_HZ = 20
 HOLD_CYCLES = 10   # matches MACRO_BUTTON_SENDING_COUNT in the UI
 ZERO_CYCLES = 10

@@ -1,6 +1,7 @@
 #include "rl_teleop/rl_teleop_runner.h"
 
 #include <glog/logging.h>
+#include <chrono>
 #include <fstream>
 #include <sstream>
 
@@ -478,7 +479,14 @@ void RlTeleopRunner::CalculateMotorCommand() {
     flight_log_ << iq.w() << "," << iq.x() << "," << iq.y() << "," << iq.z() << ",";
     const auto& fr = receiver_->Latest();
     flight_log_ << fr.quat_wxyz(0) << "," << fr.quat_wxyz(1) << ","
-                << fr.quat_wxyz(2) << "," << fr.quat_wxyz(3) << "\n";
+                << fr.quat_wxyz(2) << "," << fr.quat_wxyz(3) << ",";
+    // wall-clock stamp (us, CLOCK_REALTIME) — lets a host-side LCM tap of
+    // sim_state be cross-correlated against these rows to measure the REAL
+    // per-tick obs staleness / command lag (loop-trace DR for training)
+    flight_log_ << std::chrono::duration_cast<std::chrono::microseconds>(
+                       std::chrono::system_clock::now().time_since_epoch())
+                       .count()
+                << "\n";
   }
   policy_action_ = policy_action_.cwiseMax(-param_->action_clip).cwiseMin(param_->action_clip);
 
