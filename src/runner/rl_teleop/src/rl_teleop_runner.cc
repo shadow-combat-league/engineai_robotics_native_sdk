@@ -495,7 +495,10 @@ void RlTeleopRunner::CalculateMotorCommand() {
   // Targets: default + scaled action for action joints; reference passthrough
   // for motion-driven (arm) joints — mirrors DeployedPolicy.act()
   q_des_ = default_joint_q_;
-  for (int i = 0; i < policy_action_.size(); ++i) {
+  // NOTE: policy_action_ may be LONGER than action_joint_idx_ (gen6: the
+  // tail carries residual arm deltas) — bound by the joint list, not the
+  // action vector.
+  for (int i = 0; i < static_cast<int>(action_joint_idx_.size()); ++i) {
     q_des_(action_joint_idx_(i)) =
         default_joint_q_(action_joint_idx_(i)) + action_scale_(i) * policy_action_(i);
   }
