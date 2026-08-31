@@ -35,7 +35,6 @@ tasks:
       - passive
       - walk
       - dance
-      - rl_teleop
     key: [LB, A]
 
   - motion: rl_teleop
@@ -47,6 +46,7 @@ tasks:
     manual_transition:
       - passive
       - pd_stand
+      - walk
     key: [RB, A]
 
   - motion: walk
@@ -59,7 +59,14 @@ tasks:
       - passive
       - pd_stand
       - stance_to_supine
-      - dance      
+      - dance
+      # rl_teleop is entered from WALK, not pd_stand: the walk controller is
+      # a closed-loop balancer, so the handover starts from a genuinely
+      # balanced robot. pd_stand is an open-loop pose hold — on the gantry it
+      # leans on the strap and hands the policy an off-balance robot
+      # (measured 2026-08-31: 8 deg back-lean takeover reproduces the
+      # hardware air-stepping).
+      - rl_teleop
     key: [LB, B]
 
   - motion: dance
