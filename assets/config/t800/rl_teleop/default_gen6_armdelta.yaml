@@ -1,0 +1,121 @@
+# rl_teleop: live PICO teleoperation with the terminator-teleop-system
+# tracking policy. Values transcribed from the policy export's
+# deploy_config.yaml — regenerate when a new policy generation changes
+# gains/scales/joint sets.
+#
+# Reference stream: deploy/pico_udp_publisher.py on the operator machine.
+
+policy_path: rl_teleop/policy/policy.mnn
+num_actions: 23  # 13 leg/torso + 10 arm deltas (gen6)
+action_clip: 100.0
+# Short blend: a long blend makes the policy fight the interpolation — it
+# winds up through last_action while the robot ignores it, then the wound-up
+# targets hit as the blend completes (measured: act ramp 0.65->3.3 in 0.2s,
+# fall at ~0.5s with 2.0s blend). NOTE (2026-08-31): the vendor's own
+# deployed walking example uses transition_time 0.0 — INSTANT takeover, no
+# blend — pairing the runner with policies trained to catch the handover.
+# Our takeover DR (rl-lab 74d78e4: cold-start spawns at the pd_stand pose)
+# trains exactly that. SET THIS TO 0.0 when gating checkpoints trained with
+# takeover DR; keep 0.2 for older policies.
+transition_time: 0.0  # instant takeover — gen6 policies train the handover (takeover DR)
+
+use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
+# v2 (2026-08-25): feed anchor_pos_b from the base state estimator (verified
+# live via probe; z tracks falls). Closes the distance loop the policy was
+# trained with — with zeros the robot cannot perceive falling behind the
+# reference root (measured: forward-pitch collapse in the 1.67 m/s sprint).
+# Set to "none" to A/B back to v1 zeros.
+anchor_pos_source: none
+
+# Ankle-velocity masking (vendor convention for THEIR policies): tested and
+# reverted — our policy trained with real ankle velocities, and the masking
+# was addressing a symptom later traced to the transition-blend windup.
+# Re-enable with the four ankle joints if hardware ankle qd proves noisy.
+qd_zero_joint_names: []
+ref_jvel_clip: 12.0
+ref_jvel_alpha: 0.3
+
+# Target low-pass (1.0 = off). 0.5 REVERTED for sim (2026-08-25): its ~20 ms
+# group delay stacks on the SDK loop's ~40 ms obs staleness + the vendor
+# motor pipeline's own lag — walking02 then falls at clip ~4.3 s in PLAIN
+# walking (two runs, content-locked), a section every pre-LPF run cleared.
+# The sim vibration this filter treated is cosmetic (sim obs are clean; the
+# buzz problem is hardware-only). Real fix is training-side action-rate.
+action_lpf_alpha: 0.7
+
+# Reference base-orientation slew limit (rad/s; >=10 disables). The plant's
+# measured yaw-rate ceiling is ~2.4-2.6 rad/s; walking02's pirouette commands
+# 4.05 and the uncloseable anchor error topples the robot at the spin exit.
+# 2.2 keeps the reference reachable — the robot turns at its own pace and
+# arrives late instead of falling. Inert for normal walking (<=0.35 rad/s).
+ref_ang_slew: 0.8
+
+# Policy runs immediately on a built-in standing reference; UDP stream takes
+# over when packets arrive
+builtin_stand_reference: true
+
+udp_port: 47800
+ref_stale_timeout: 0.5
+
+# Torque limits ON (hardware-faithful): per-joint tau_max + 1000 Nm
+# lower-body budget. The original problem was the choking 500 budget, not
+# limits per se — do not lower the budget without re-gating walking clips.
+torque_limit: true
+max_lower_body_torque: 2000.0
+lower_body_joint_count: 12
+
+# Isaac observation order — MUST match the policy export
+obs_joint_names: [J00_HIP_PITCH_L, J06_HIP_PITCH_R, J12_TORSO_YAW, J01_HIP_ROLL_L,
+  J07_HIP_ROLL_R, J13_SHOULDER_PITCH_L, J18_SHOULDER_PITCH_R, J23_HEAD_PITCH,
+  J02_HIP_YAW_L, J08_HIP_YAW_R, J14_SHOULDER_ROLL_L, J19_SHOULDER_ROLL_R,
+  J24_HEAD_YAW, J03_KNEE_PITCH_L, J09_KNEE_PITCH_R, J15_SHOULDER_YAW_L,
+  J20_SHOULDER_YAW_R, J04_ANKLE_PITCH_L, J10_ANKLE_PITCH_R, J16_ELBOW_PITCH_L,
+  J21_ELBOW_PITCH_R, J05_ANKLE_ROLL_L, J11_ANKLE_ROLL_R, J17_ELBOW_YAW_L,
+  J22_ELBOW_YAW_R]
+
+action_joint_names: [J00_HIP_PITCH_L, J06_HIP_PITCH_R, J12_TORSO_YAW, J01_HIP_ROLL_L,
+  J07_HIP_ROLL_R, J02_HIP_YAW_L, J08_HIP_YAW_R,
+  J03_KNEE_PITCH_L, J09_KNEE_PITCH_R, J04_ANKLE_PITCH_L, J10_ANKLE_PITCH_R,
+  J05_ANKLE_ROLL_L, J11_ANKLE_ROLL_R]
+
+# 13 leg/torso scales + 10 arm-delta scales (0.1 rad/unit, training delta_scale)
+action_scale: [0.5, 0.5, 0.2, 0.2, 0.2, 0.2, 0.2, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2,
+  0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+# Gen6 arm-delta joints: q_des = streamed reference + action_scale * delta.
+# Order MUST match training (T800_GMR_ARM_JOINT_NAMES order).
+residual_joint_names: [J13_SHOULDER_PITCH_L, J14_SHOULDER_ROLL_L,
+  J15_SHOULDER_YAW_L, J16_ELBOW_PITCH_L, J17_ELBOW_YAW_L,
+  J18_SHOULDER_PITCH_R, J19_SHOULDER_ROLL_R, J20_SHOULDER_YAW_R,
+  J21_ELBOW_PITCH_R, J22_ELBOW_YAW_R]
+
+# Arm joints driven open-loop from the reference (as in training/deploy)
+motion_driven_joint_names: [J23_HEAD_PITCH, J24_HEAD_YAW]
+
+# Per-joint control values (name-keyed; distributed by joint_id at runtime)
+joints:
+  J00_HIP_PITCH_L:      {q_default: -0.06, kp: 180.0, kd: 5.0, tau_max: 415.0, q_min: -3.316, q_max: 2.269}
+  J01_HIP_ROLL_L:       {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 370.0, q_min: -1.082, q_max: 2.059}
+  J02_HIP_YAW_L:        {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 222.0, q_min: -1.422, q_max: 3.602}
+  J03_KNEE_PITCH_L:     {q_default:  0.12, kp: 180.0, kd: 5.0, tau_max: 415.0, q_min: -0.262, q_max: 2.355}
+  J04_ANKLE_PITCH_L:    {q_default: -0.06, kp: 40.0,  kd: 2.0, tau_max: 160.0, q_min: -0.681, q_max: 0.681}
+  J05_ANKLE_ROLL_L:     {q_default:  0.0,  kp: 40.0,  kd: 2.0, tau_max: 160.0, q_min: -0.349, q_max: 0.175}
+  J06_HIP_PITCH_R:      {q_default: -0.06, kp: 180.0, kd: 5.0, tau_max: 415.0, q_min: -3.316, q_max: 2.269}
+  J07_HIP_ROLL_R:       {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 370.0, q_min: -2.059, q_max: 1.082}
+  J08_HIP_YAW_R:        {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 222.0, q_min: -3.602, q_max: 1.422}
+  J09_KNEE_PITCH_R:     {q_default:  0.12, kp: 180.0, kd: 5.0, tau_max: 415.0, q_min: -0.262, q_max: 2.355}
+  J10_ANKLE_PITCH_R:    {q_default: -0.06, kp: 40.0,  kd: 2.0, tau_max: 160.0, q_min: -0.681, q_max: 0.681}
+  J11_ANKLE_ROLL_R:     {q_default:  0.0,  kp: 40.0,  kd: 2.0, tau_max: 160.0, q_min: -0.175, q_max: 0.349}
+  J12_TORSO_YAW:        {q_default:  0.0,  kp: 100.0, kd: 3.0, tau_max: 222.0, q_min: -4.381, q_max: 1.239}
+  J13_SHOULDER_PITCH_L: {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.967, q_max: 2.793}
+  J14_SHOULDER_ROLL_L:  {q_default:  0.15, kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -0.384, q_max: 2.443}
+  J15_SHOULDER_YAW_L:   {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.618, q_max: 2.618}
+  J16_ELBOW_PITCH_L:    {q_default: -0.25, kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.286, q_max: 0.262}
+  J17_ELBOW_YAW_L:      {q_default:  0.0,  kp: 50.0,  kd: 1.2, tau_max: 52.0, q_min: -2.618, q_max: 2.618}
+  J18_SHOULDER_PITCH_R: {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.967, q_max: 2.793}
+  J19_SHOULDER_ROLL_R:  {q_default: -0.15, kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.443, q_max: 0.384}
+  J20_SHOULDER_YAW_R:   {q_default:  0.0,  kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.618, q_max: 2.618}
+  J21_ELBOW_PITCH_R:    {q_default: -0.25, kp: 50.0,  kd: 2.5, tau_max: 160.0, q_min: -2.286, q_max: 0.262}
+  J22_ELBOW_YAW_R:      {q_default:  0.0,  kp: 50.0,  kd: 1.2, tau_max: 52.0, q_min: -2.618, q_max: 2.618}
+  J23_HEAD_PITCH:       {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0, q_min: -0.523, q_max: 0.523}
+  J24_HEAD_YAW:         {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0, q_min: -1.222, q_max: 1.222}

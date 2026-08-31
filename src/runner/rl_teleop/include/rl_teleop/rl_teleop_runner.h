@@ -67,6 +67,8 @@ class RlTeleopRunner : public MotionRunner {
   Eigen::VectorXi obs_joint_idx_;      // 25, Isaac obs order
   Eigen::VectorXi action_joint_idx_;   // 15
   Eigen::VectorXi motion_joint_idx_;   // 10
+  Eigen::VectorXi residual_joint_idx_;  // gen6 arm-delta joints (may be empty)
+  std::vector<int> residual_pos_in_obs_;
   std::vector<int> action_pos_in_obs_; // where each action joint sits in obs order
   std::vector<int> motion_pos_in_obs_; // where each motion-driven joint sits in obs order
   std::vector<int> qd_zero_pos_in_obs_; // obs positions whose velocity is masked to zero

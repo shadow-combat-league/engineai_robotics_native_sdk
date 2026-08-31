@@ -47,6 +47,10 @@ class RlTeleopParam : public BasicParam {
   std::vector<std::string> action_joint_names;        // 15, Isaac action order
   std::vector<std::string> motion_driven_joint_names; // 10, arms from reference
   std::vector<double> action_scale;                   // 15, per action joint
+  // Gen6 arm-delta: joints whose q_des = streamed reference + scaled policy
+  // delta (delta actions occupy the tail of the action vector, matching the
+  // training action-manager term order). Empty = disabled (gen<=5 policies).
+  std::vector<std::string> residual_joint_names;
 
   // Per-joint control values keyed by joint name
   std::map<std::string, TeleopJointConfig> joints;

@@ -162,6 +162,7 @@ void RlTeleopRunner::Init() {
   obs_joint_idx_ = resolve(param_->obs_joint_names);
   action_joint_idx_ = resolve(param_->action_joint_names);
   motion_joint_idx_ = resolve(param_->motion_driven_joint_names);
+  residual_joint_idx_ = resolve(param_->residual_joint_names);
 
   // Positions of action/motion joints inside the obs-order vectors
   auto pos_in_obs = [&](const std::vector<std::string>& names) {
@@ -177,6 +178,7 @@ void RlTeleopRunner::Init() {
   };
   action_pos_in_obs_ = pos_in_obs(param_->action_joint_names);
   motion_pos_in_obs_ = pos_in_obs(param_->motion_driven_joint_names);
+  residual_pos_in_obs_ = pos_in_obs(param_->residual_joint_names);
   qd_zero_pos_in_obs_ = pos_in_obs(param_->qd_zero_joint_names);
 
   // Full-order control vectors from the name-keyed joints map
@@ -499,6 +501,15 @@ void RlTeleopRunner::CalculateMotorCommand() {
   }
   for (size_t i = 0; i < motion_pos_in_obs_.size(); ++i) {
     q_des_(motion_joint_idx_(static_cast<int>(i))) = ref_jpos_(motion_pos_in_obs_[i]);
+  }
+  // Gen6 residual (arm-delta) joints: streamed reference + scaled policy
+  // delta. Delta actions occupy the TAIL of the action vector — the training
+  // action manager concatenates [joint_pos(13), arm_motion deltas(10)].
+  const int roff = static_cast<int>(action_joint_idx_.size());
+  for (size_t i = 0; i < residual_pos_in_obs_.size(); ++i) {
+    const int k = roff + static_cast<int>(i);
+    q_des_(residual_joint_idx_(static_cast<int>(i))) =
+        ref_jpos_(residual_pos_in_obs_[i]) + action_scale_(k) * policy_action_(k);
   }
 
   // Blend in from the entry pose over transition_time

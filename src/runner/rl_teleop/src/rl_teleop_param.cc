@@ -25,6 +25,7 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
   }
   LOAD_PARAM_DEFAULT(imu_ang_vel_world, true);
   LOAD_PARAM_DEFAULT(qd_zero_joint_names, std::vector<std::string>{});
+  LOAD_PARAM_DEFAULT(residual_joint_names, std::vector<std::string>{});
   LOAD_PARAM_DEFAULT(ref_jvel_clip, 12.0);
   LOAD_PARAM_DEFAULT(ref_jvel_alpha, 0.3);
   LOAD_PARAM_DEFAULT(action_lpf_alpha, 1.0);
@@ -42,11 +43,12 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
   if (action_lpf_alpha <= 0.0 || action_lpf_alpha > 1.0) {
     throw std::runtime_error("rl_teleop: action_lpf_alpha must be in (0, 1]");
   }
-  if (static_cast<int>(action_joint_names.size()) != num_actions) {
-    throw std::runtime_error("rl_teleop: action_joint_names size != num_actions");
+  if (static_cast<int>(action_joint_names.size() + residual_joint_names.size()) != num_actions) {
+    throw std::runtime_error(
+        "rl_teleop: action_joint_names + residual_joint_names size != num_actions");
   }
-  if (action_scale.size() != action_joint_names.size()) {
-    throw std::runtime_error("rl_teleop: action_scale size != action_joint_names size");
+  if (static_cast<int>(action_scale.size()) != num_actions) {
+    throw std::runtime_error("rl_teleop: action_scale size != num_actions");
   }
   for (const auto& name : obs_joint_names) {
     if (joints.find(name) == joints.end()) {
