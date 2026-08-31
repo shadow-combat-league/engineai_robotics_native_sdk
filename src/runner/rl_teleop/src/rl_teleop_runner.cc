@@ -86,7 +86,8 @@ bool RlTeleopRunner::Enter() {
   }
   LOG(INFO) << "rl_teleop: build " << __DATE__ << " " << __TIME__
             << " — entered. Waiting for reference stream on UDP :" << param_->udp_port
-            << " (obs " << (param_->use_anchor_pos ? 127 : 124) << "-dim)";
+            << " (obs " << (50 + (param_->use_anchor_pos ? 3 : 0) + 6 + 3 + 50 + param_->num_actions)
+            << "-dim, " << param_->num_actions << " actions)";
   return true;
 }
 
