@@ -8,10 +8,15 @@
 policy_path: rl_teleop/policy/policy.mnn
 num_actions: 13
 action_clip: 100.0
-# Short blend (vendor uses 0.3): a long blend makes the policy fight the
-# interpolation — it winds up through last_action while the robot ignores it,
-# then the wound-up targets hit as the blend completes (measured: act ramp
-# 0.65->3.3 in 0.2s, fall at ~0.5s with 2.0s blend)
+# Short blend: a long blend makes the policy fight the interpolation — it
+# winds up through last_action while the robot ignores it, then the wound-up
+# targets hit as the blend completes (measured: act ramp 0.65->3.3 in 0.2s,
+# fall at ~0.5s with 2.0s blend). NOTE (2026-08-31): the vendor's own
+# deployed walking example uses transition_time 0.0 — INSTANT takeover, no
+# blend — pairing the runner with policies trained to catch the handover.
+# Our takeover DR (rl-lab 74d78e4: cold-start spawns at the pd_stand pose)
+# trains exactly that. SET THIS TO 0.0 when gating checkpoints trained with
+# takeover DR; keep 0.2 for older policies.
 transition_time: 0.2
 
 use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
@@ -20,7 +25,7 @@ use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
 # trained with — with zeros the robot cannot perceive falling behind the
 # reference root (measured: forward-pitch collapse in the 1.67 m/s sprint).
 # Set to "none" to A/B back to v1 zeros.
-anchor_pos_source: velocity
+anchor_pos_source: none
 
 # Ankle-velocity masking (vendor convention for THEIR policies): tested and
 # reverted — our policy trained with real ankle velocities, and the masking
@@ -43,7 +48,7 @@ action_lpf_alpha: 0.7
 # 4.05 and the uncloseable anchor error topples the robot at the spin exit.
 # 2.2 keeps the reference reachable — the robot turns at its own pace and
 # arrives late instead of falling. Inert for normal walking (<=0.35 rad/s).
-ref_ang_slew: 2.2
+ref_ang_slew: 0.8
 
 # Policy runs immediately on a built-in standing reference; UDP stream takes
 # over when packets arrive
