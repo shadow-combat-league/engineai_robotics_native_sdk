@@ -19,7 +19,7 @@ use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
 # sim AND the hardware estimator's translation quality is checked (probe
 # logs base_state_in_world every 5 s — compare against actual walked
 # distance on the gantry first).
-anchor_pos_source: none
+anchor_pos_source: velocity  # 2026-09-01: velocity > none (A B: drift 5.75 -> 4.90 m, anchor err 0.31 m of real signal). estimator is still HARMFUL - never use it.
 
 # Ankle-velocity masking ENABLED on hardware (2026-08-25): first session was
 # audibly buzzing at stand — real encoder qd noise drives policy chatter and

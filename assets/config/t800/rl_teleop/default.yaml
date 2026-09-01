@@ -6,7 +6,7 @@
 # Reference stream: deploy/pico_udp_publisher.py on the operator machine.
 
 policy_path: rl_teleop/policy/policy.mnn
-num_actions: 13
+num_actions: 23  # 13 leg/torso + 10 arm deltas (gen6)
 action_clip: 100.0
 # Short blend: a long blend makes the policy fight the interpolation — it
 # winds up through last_action while the robot ignores it, then the wound-up
@@ -17,7 +17,7 @@ action_clip: 100.0
 # Our takeover DR (rl-lab 74d78e4: cold-start spawns at the pd_stand pose)
 # trains exactly that. SET THIS TO 0.0 when gating checkpoints trained with
 # takeover DR; keep 0.2 for older policies.
-transition_time: 0.2
+transition_time: 0.0  # instant takeover — gen6 policies train the handover (takeover DR)
 
 use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
 # v2 (2026-08-25): feed anchor_pos_b from the base state estimator (verified
@@ -25,7 +25,7 @@ use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
 # trained with — with zeros the robot cannot perceive falling behind the
 # reference root (measured: forward-pitch collapse in the 1.67 m/s sprint).
 # Set to "none" to A/B back to v1 zeros.
-anchor_pos_source: none
+anchor_pos_source: velocity  # 2026-09-01: velocity > none (A B: drift 5.75 -> 4.90 m, anchor err 0.31 m of real signal). estimator is still HARMFUL - never use it.
 
 # Ankle-velocity masking (vendor convention for THEIR policies): tested and
 # reverted — our policy trained with real ankle velocities, and the masking
@@ -78,13 +78,19 @@ action_joint_names: [J00_HIP_PITCH_L, J06_HIP_PITCH_R, J12_TORSO_YAW, J01_HIP_RO
   J03_KNEE_PITCH_L, J09_KNEE_PITCH_R, J04_ANKLE_PITCH_L, J10_ANKLE_PITCH_R,
   J05_ANKLE_ROLL_L, J11_ANKLE_ROLL_R]
 
-action_scale: [0.5, 0.5, 0.2, 0.2, 0.2, 0.2, 0.2, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2]
+# 13 leg/torso scales + 10 arm-delta scales (0.1 rad/unit, training delta_scale)
+action_scale: [0.5, 0.5, 0.2, 0.2, 0.2, 0.2, 0.2, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2,
+  0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+# Gen6 arm-delta joints: q_des = streamed reference + action_scale * delta.
+# Order MUST match training (T800_GMR_ARM_JOINT_NAMES order).
+residual_joint_names: [J13_SHOULDER_PITCH_L, J14_SHOULDER_ROLL_L,
+  J15_SHOULDER_YAW_L, J16_ELBOW_PITCH_L, J17_ELBOW_YAW_L,
+  J18_SHOULDER_PITCH_R, J19_SHOULDER_ROLL_R, J20_SHOULDER_YAW_R,
+  J21_ELBOW_PITCH_R, J22_ELBOW_YAW_R]
 
 # Arm joints driven open-loop from the reference (as in training/deploy)
-motion_driven_joint_names: [J13_SHOULDER_PITCH_L, J18_SHOULDER_PITCH_R,
-  J14_SHOULDER_ROLL_L, J19_SHOULDER_ROLL_R, J15_SHOULDER_YAW_L, J20_SHOULDER_YAW_R,
-  J16_ELBOW_PITCH_L, J21_ELBOW_PITCH_R, J17_ELBOW_YAW_L, J22_ELBOW_YAW_R,
-  J23_HEAD_PITCH, J24_HEAD_YAW]
+motion_driven_joint_names: [J23_HEAD_PITCH, J24_HEAD_YAW]
 
 # Per-joint control values (name-keyed; distributed by joint_id at runtime)
 joints:
