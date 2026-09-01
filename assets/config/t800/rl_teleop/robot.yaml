@@ -27,8 +27,16 @@ anchor_pos_source: none
 # and training used 3x noise on ankle joint_vel, so the policy tolerates it.
 # Gate in SDK sim before a robot session (sim config keeps [] since sim qd is
 # clean — this line is the hardware-vs-sim A/B knob).
-qd_zero_joint_names: [J04_ANKLE_PITCH_L, J05_ANKLE_ROLL_L,
-  J10_ANKLE_PITCH_R, J11_ANKLE_ROLL_R]
+# CONFIG DRIFT REMOVED (2026-09-01): this mask zeroed the four ankle
+# velocity channels ON HARDWARE ONLY — training never used it and every sim
+# gate runs with [] (default.yaml), so we were gating a different policy
+# configuration than we deployed. Hardware flight log (gen6e_3500) measured
+# the cost: true ankle velocity 2.0-2.6 rad/s mean, peaks 8-12 rad/s, ankle
+# pitch oscillating at 3.2 Hz / 6.7 deg RMS, while the policy was told
+# 0.000 — it cannot damp an oscillation it cannot observe. Match training.
+# If real ankle qd proves NOISY (not just active), the fix is to mask in
+# TRAINING too, never on one side only.
+qd_zero_joint_names: []
 ref_jvel_clip: 12.0
 ref_jvel_alpha: 0.3
 
@@ -43,7 +51,7 @@ action_lpf_alpha: 0.7
 # Reference base-orientation slew limit (rad/s; >=10 disables) — protects
 # hardware from fast commanded spins (clip pirouettes, abrupt live-PICO
 # turns) the plant cannot follow. See default.yaml for the measured basis.
-ref_ang_slew: 2.2
+ref_ang_slew: 0.8  # match the gated sim value (config-drift guard 2026-09-01)
 
 # Policy runs immediately on a built-in standing reference; UDP stream takes
 # over when packets arrive
