@@ -46,7 +46,14 @@ ref_jvel_alpha: 0.3
 # 20 ms lag on top of loop staleness exceeds the DR envelope), so hardware
 # gets the mild setting; the ankle qd masking above is the primary buzz fix.
 # Only consider 0.5 if hardware standing is rock-solid AND buzz persists.
-action_lpf_alpha: 0.7
+# HARDWARE-ONLY (2026-09-01, justified drift — see check_config_drift
+# ALLOWED_DIFFS): the real robot buzzes at ~8 Hz where the sim does not
+# (measured: ankle-pitch COMMAND carries 50.6% of its energy above 8 Hz at
+# 0.33 rad RMS while the joint only moves 0.09 rad — the policy commands
+# chatter the plant low-passes). This filter attenuates the command, it does
+# NOT change what the policy observes, so it cannot invalidate a gate the
+# way the ankle-qd mask did. alpha 0.5 = tau 14 ms, cutoff ~11 Hz.
+action_lpf_alpha: 0.5
 
 # Reference base-orientation slew limit (rad/s; >=10 disables) — protects
 # hardware from fast commanded spins (clip pirouettes, abrupt live-PICO
