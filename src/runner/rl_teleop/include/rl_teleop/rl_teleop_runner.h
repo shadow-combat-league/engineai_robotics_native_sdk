@@ -69,6 +69,7 @@ class RlTeleopRunner : public MotionRunner {
   Eigen::VectorXi motion_joint_idx_;   // 10
   Eigen::VectorXi residual_joint_idx_;  // gen6 arm-delta joints (may be empty)
   std::vector<int> residual_pos_in_obs_;
+  int n_lookahead_ = 0;  // 28 * number of gen7 lookahead horizons
   std::vector<int> action_pos_in_obs_; // where each action joint sits in obs order
   std::vector<int> motion_pos_in_obs_; // where each motion-driven joint sits in obs order
   std::vector<int> qd_zero_pos_in_obs_; // obs positions whose velocity is masked to zero
@@ -126,6 +127,7 @@ class RlTeleopRunner : public MotionRunner {
   int transition_iter_ = 0;
   int stale_log_counter_ = 0;
   int fall_counter_ = 0;
+  bool policy_bad_ = false;  // insane inference output -> policy latched off
 };
 
 }  // namespace runner

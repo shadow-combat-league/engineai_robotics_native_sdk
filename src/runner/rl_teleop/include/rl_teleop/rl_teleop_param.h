@@ -51,6 +51,9 @@ class RlTeleopParam : public BasicParam {
   // delta (delta actions occupy the tail of the action vector, matching the
   // training action-manager term order). Empty = disabled (gen<=5 policies).
   std::vector<std::string> residual_joint_names;
+  // gen7 reference lookahead horizons (seconds). Empty = gen<=6 (protocol
+  // TTP1, no future channels). MUST match the training cfg's LOOKAHEAD_S.
+  std::vector<double> lookahead_offsets_s;
 
   // Per-joint control values keyed by joint name
   std::map<std::string, TeleopJointConfig> joints;
@@ -107,6 +110,12 @@ class RlTeleopParam : public BasicParam {
   // Reference stream (UDP)
   int udp_port = 47800;
   double ref_stale_timeout = 0.5;  // s without packets -> hold last reference
+
+  // Reject an inference whose |action| exceeds this (or is non-finite) and
+  // hold the measured pose instead. Healthy checkpoints of this family peak
+  // near 3 (worst seen 4.67), so 20 never binds in normal operation but
+  // catches the ~1e35 garbage a dimension-mismatched .mnn returns.
+  double action_sanity_limit = 20.0;
 
   // Torque limiting
   bool torque_limit = true;

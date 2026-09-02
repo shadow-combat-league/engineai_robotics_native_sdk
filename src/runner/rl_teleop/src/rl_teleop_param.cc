@@ -26,10 +26,12 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
   LOAD_PARAM_DEFAULT(imu_ang_vel_world, true);
   LOAD_PARAM_DEFAULT(qd_zero_joint_names, std::vector<std::string>{});
   LOAD_PARAM_DEFAULT(residual_joint_names, std::vector<std::string>{});
+  LOAD_PARAM_DEFAULT(lookahead_offsets_s, std::vector<double>{});
   LOAD_PARAM_DEFAULT(ref_jvel_clip, 12.0);
   LOAD_PARAM_DEFAULT(ref_jvel_alpha, 0.3);
   LOAD_PARAM_DEFAULT(action_lpf_alpha, 1.0);
   LOAD_PARAM_DEFAULT(ref_ang_slew, 12.0);
+  LOAD_PARAM_DEFAULT(action_sanity_limit, 20.0);
 
   LOAD_PARAM_DEFAULT(builtin_stand_reference, true);
   LOAD_PARAM(udp_port);

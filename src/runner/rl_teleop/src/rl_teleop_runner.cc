@@ -23,6 +23,27 @@ Eigen::Matrix3d YawRotation(const Eigen::Matrix3d& R) {
   return Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
 }
 
+
+// Element count of the .mnn's input tensor, or -1 if it cannot be read.
+// Loaded through our OWN Interpreter so no assumption is made about
+// MNNModel's internals; failure to read is never fatal by itself.
+int PolicyInputDim(const std::string& path) {
+  try {
+    std::shared_ptr<MNN::Interpreter> net(MNN::Interpreter::createFromFile(path.c_str()),
+                                          MNN::Interpreter::destroy);
+    if (!net) return -1;
+    MNN::ScheduleConfig cfg;
+    MNN::Session* sess = net->createSession(cfg);
+    if (!sess) return -1;
+    MNN::Tensor* in = net->getSessionInput(sess, nullptr);
+    int n = in ? static_cast<int>(in->elementSize()) : -1;
+    net->releaseSession(sess);
+    return n;
+  } catch (...) {
+    return -1;
+  }
+}
+
 }  // namespace
 
 // A/B COMPLETE (2026-08-25, fresh binaries both arms): false = under-driven
@@ -48,6 +69,7 @@ bool RlTeleopRunner::Enter() {
   yaw_aligned_ = false;
   have_reference_ = false;
   fall_counter_ = 0;
+  policy_bad_ = false;
   lpf_primed_ = false;
   resume_blend_ = 1.0;
   // Packets buffered from a previous session must never become the reference
@@ -86,8 +108,12 @@ bool RlTeleopRunner::Enter() {
   }
   LOG(INFO) << "rl_teleop: build " << __DATE__ << " " << __TIME__
             << " — entered. Waiting for reference stream on UDP :" << param_->udp_port
-            << " (obs " << (50 + (param_->use_anchor_pos ? 3 : 0) + 6 + 3 + 50 + param_->num_actions)
-            << "-dim, " << param_->num_actions << " actions)";
+            << " (obs "
+            << (50 + (param_->use_anchor_pos ? 3 : 0) + 6 + 3 + 50 + param_->num_actions
+                + n_lookahead_)
+            << "-dim, " << param_->num_actions << " actions, lookahead "
+            << n_lookahead_ << " values / " << param_->lookahead_offsets_s.size()
+            << " horizons, protocol " << (n_lookahead_ > 0 ? "TTP2" : "TTP1") << ")";
   return true;
 }
 
@@ -144,7 +170,59 @@ void RlTeleopRunner::Init() {
 
   // Receiver
   if (!receiver_) {
-    receiver_ = std::make_unique<rl_teleop::UdpReferenceReceiver>(param_->udp_port);
+    n_lookahead_ = static_cast<int>(param_->lookahead_offsets_s.size()) *
+                   rl_teleop::UdpReferenceReceiver::kLookaheadPerHorizon;
+    receiver_ = std::make_unique<rl_teleop::UdpReferenceReceiver>(
+        param_->udp_port, n_lookahead_);
+  }
+
+  // POLICY/OBSERVATION DIMENSION CHECK — the guard that must never be
+  // removed. 2026-09-02: a 191-dim gen7 policy.mnn was deployed against a
+  // 135-dim gen6 config on the real T800. The vendor MNNModel does not
+  // validate the input size: the FIRST inference returned plausible values,
+  // then every subsequent one returned frozen garbage (~1e35) computed on a
+  // stale/uninitialised input buffer. action_clip turned that into a
+  // full-scale +-100 command and the robot slammed to its joint limits at
+  // kp 180, taking the gantry with it. Silent, one tick after mode entry.
+  // Reproduced in the vendor sim with the same three-tick signature.
+  {
+    const int n_look = static_cast<int>(param_->lookahead_offsets_s.size()) *
+                       rl_teleop::UdpReferenceReceiver::kLookaheadPerHorizon;
+    const int expect = 50 + (param_->use_anchor_pos ? 3 : 0) + 6 + 3 + 50 +
+                       param_->num_actions + n_look;
+    const std::string policy_path =
+        common::PathJoin(common::GlobalPathManager::GetInstance().GetConfigPath(),
+                         param_->policy_path);
+    const int have = PolicyInputDim(policy_path);
+    if (have < 0) {
+      LOG(WARNING) << "rl_teleop: could not read the policy's input dim from "
+                   << policy_path << " — dimension check SKIPPED";
+    } else if (have != expect) {
+      std::ostringstream m;
+      m << "rl_teleop: POLICY/CONFIG DIMENSION MISMATCH — refusing to run. "
+        << policy_path << " expects " << have << " observation values, this "
+        << "config builds " << expect << " (num_actions " << param_->num_actions
+        << ", use_anchor_pos " << param_->use_anchor_pos << ", lookahead "
+        << n_look << " values / " << param_->lookahead_offsets_s.size()
+        << " horizons). Install the matching .mnn, or fix "
+        << "lookahead_offsets_s / num_actions / use_anchor_pos. "
+        << "Feeding a mismatched policy produces frozen garbage actions and "
+        << "slams the joints to their limits.";
+      LOG(ERROR) << m.str();
+      throw std::runtime_error(m.str());
+    } else {
+      // Self-describing entry log: names the exact file, its byte size and
+      // the dim, so "was the right policy loaded?" is answerable from the
+      // robot's own log without trusting anyone's memory of what they
+      // rsynced. deploy/preflight_hardware.py prints the same triplet.
+      std::ifstream f(policy_path, std::ios::binary | std::ios::ate);
+      const long bytes = f.is_open() ? static_cast<long>(f.tellg()) : -1;
+      LOG(INFO) << "rl_teleop: policy/config dimension check OK — obs " << expect
+                << ", policy " << param_->policy_path << " (" << bytes
+                << " bytes, " << have << "-dim), config tag '" << param_tag_
+                << "', lookahead " << n_look << " values, protocol "
+                << (n_look > 0 ? "TTP2" : "TTP1");
+    }
   }
 
   // Joint index maps, all resolved by NAME against the model
@@ -383,7 +461,7 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
   const int nj = rl_teleop::UdpReferenceReceiver::kNumJoints;
   const int na = param_->num_actions;
   const int dim = 2 * nj + (param_->use_anchor_pos ? 3 : 0) + 6 + 3 + 2 * nj + na;
-  Eigen::VectorXd obs(dim);
+  Eigen::VectorXd obs(dim + n_lookahead_);
   int k = 0;
 
   // command: ref joint positions + velocities (Isaac obs order)
@@ -439,6 +517,20 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
   }
   obs.segment(k, na) = policy_action_; k += na;
 
+  // gen7 reference LOOKAHEAD, appended last exactly as the training
+  // observation group orders it. Streamed by a TTP2 publisher; all-zeros
+  // ("nothing is changing") until the first packet arrives, which is the
+  // benign default the training encoding was chosen to give us.
+  if (n_lookahead_ > 0) {
+    const auto& fr = receiver_->Latest();
+    if (fr.valid && fr.lookahead.size() == n_lookahead_) {
+      obs.segment(k, n_lookahead_) = fr.lookahead;
+    } else {
+      obs.segment(k, n_lookahead_).setZero();
+    }
+    k += n_lookahead_;
+  }
+
   return obs.cast<float>();
 }
 
@@ -456,6 +548,29 @@ void RlTeleopRunner::CalculateMotorCommand() {
   }
 
   policy_action_ = policy_net_->Inference(obs).cast<double>();
+
+  // ACTION SANITY LATCH. A healthy policy of this family stays within about
+  // +-3 (worst measured across every gen6/gen7 checkpoint: 4.67). Anything
+  // non-finite or wildly out of range means the inference is broken, not
+  // that the policy wants a big move — and action_clip is NO protection: it
+  // maps 1e35 onto the clip value, which is a full-scale joint slam. Latch
+  // off the policy and hold the measured pose instead.
+  if (!policy_bad_ &&
+      (!policy_action_.allFinite() ||
+       policy_action_.cwiseAbs().maxCoeff() > param_->action_sanity_limit)) {
+    policy_bad_ = true;
+    LOG(ERROR) << "rl_teleop: INSANE POLICY OUTPUT (max |a| = "
+               << policy_action_.cwiseAbs().maxCoeff() << " > limit "
+               << param_->action_sanity_limit
+               << ", finite=" << policy_action_.allFinite()
+               << ") — policy LATCHED OFF, holding measured pose. Check that "
+                  "the installed .mnn matches this config. Exit the mode to reset.";
+  }
+  if (policy_bad_) {
+    policy_action_.setZero();
+    q_des_ = q_actual_;
+    return;
+  }
 
   if (dump_count < 3) {
     std::ostringstream ss;
@@ -483,6 +598,15 @@ void RlTeleopRunner::CalculateMotorCommand() {
     const auto& fr = receiver_->Latest();
     flight_log_ << fr.quat_wxyz(0) << "," << fr.quat_wxyz(1) << ","
                 << fr.quat_wxyz(2) << "," << fr.quat_wxyz(3) << ",";
+    // PROCESSED reference orientation — heading-aligned, slew-limited and
+    // resume-blended. THIS is what feeds the anchor6d observation (see
+    // `rel = robot_rot.transpose() * ref_rot_`), unlike the RAW packet
+    // logged just above. Added 2026-09-01: without it there was no way to
+    // tell whether the config chain was distorting the reference, which is
+    // precisely the open question behind two weeks of turn debugging.
+    Eigen::Quaterniond qref(ref_rot_);
+    flight_log_ << qref.w() << "," << qref.x() << "," << qref.y() << ","
+                << qref.z() << ",";
     // wall-clock stamp (us, CLOCK_REALTIME) — lets a host-side LCM tap of
     // sim_state be cross-correlated against these rows to measure the REAL
     // per-tick obs staleness / command lag (loop-trace DR for training)
