@@ -25,7 +25,7 @@ use_anchor_pos: true      # gen-two policy (127-dim obs); false for legacy 124
 # trained with — with zeros the robot cannot perceive falling behind the
 # reference root (measured: forward-pitch collapse in the 1.67 m/s sprint).
 # Set to "none" to A/B back to v1 zeros.
-anchor_pos_source: none  # 2026-09-01: paired with p_drop=1.0 blind training — train and deploy now identical. velocity is BETTER for a sighted policy (drift 5.75 -> 4.90 m) but the blind policy must never see a nonzero anchor.
+anchor_pos_source: velocity  # paired with p_drop 0.3 sighted training (blind training measured 40x drift)
 
 # Ankle-velocity masking (vendor convention for THEIR policies): tested and
 # reverted — our policy trained with real ankle velocities, and the masking
