@@ -5,9 +5,35 @@
 #
 # Reference stream: deploy/pico_udp_publisher.py on the operator machine.
 
-policy_path: rl_teleop/policy/policy.mnn
-num_actions: 23  # gen6: 13 leg/torso + 10 arm deltas
+# HARDWARE loads its OWN policy file, never the one sim gates overwrite.
+# Both configs pointed at rl_teleop/policy/policy.mnn until 2026-09-02,
+# so installing a gen7 policy for a sim gate silently re-pointed the
+# robot at a 191-dim model its 135-dim config could not feed — the
+# violent crash that dragged the gantry. Promote a checkpoint to
+# hardware DELIBERATELY: cp <ckpt>.mnn policy/policy_hw.mnn, then run
+# deploy/check_config_drift.py before deploying.
+policy_path: rl_teleop/policy/policy_hw.mnn
+# Observation width is NOT a key here — the runner derives it:
+#   50 (ref_jpos+ref_jvel) + 3*use_anchor_pos + 9 (anchor6d+ang_vel)
+#   + 50 (joint_pos+joint_vel) + num_actions + 28*len(lookahead_offsets_s)
+# Currently: 50 + 3 + 9 + 50 + 23 + 56 = 191 (gen7).
+# Drop lookahead_offsets_s and the same file becomes 135 (gen6).
+# Print it with: python3 deploy/preflight_hardware.py
+num_actions: 23  # 13 leg/torso + 10 arm deltas (gen6 and gen7 alike)
 action_clip: 100.0
+
+# gen7 reference lookahead — MUST equal default.yaml (gated) and the
+# exported deploy_config's lookahead_offsets_s. Non-empty means the
+# publisher must run TTP2 (--lookahead 0.12,0.24) and the policy must
+# be a 191-dim gen7 model. The runner refuses mode entry if this and
+# the installed .mnn disagree (2026-09-02 crash guard).
+lookahead_offsets_s: [0.12, 0.24]
+
+# Reject a non-finite or wildly out-of-range inference and hold the
+# measured pose. Healthy checkpoints peak near 3 (worst seen 4.67), so
+# this never binds in normal operation. action_clip does NOT protect:
+# it maps garbage onto +-100, which is a full-scale joint slam.
+action_sanity_limit: 20.0
 # Short blend (vendor uses 0.3): a long blend makes the policy fight the
 # interpolation — it winds up through last_action while the robot ignores it,
 # then the wound-up targets hit as the blend completes (measured: act ramp

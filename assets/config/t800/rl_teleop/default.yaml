@@ -6,7 +6,18 @@
 # Reference stream: deploy/pico_udp_publisher.py on the operator machine.
 
 policy_path: rl_teleop/policy/policy.mnn
-num_actions: 23  # 13 leg/torso + 10 arm deltas (gen6)
+num_actions: 23  # 13 leg/torso + 10 arm deltas (gen6/gen7)
+
+# gen7 reference lookahead (seconds). MUST equal the training cfg's
+# LOOKAHEAD_S and the exported deploy_config's lookahead_offsets_s.
+# Non-empty => the runner expects protocol TTP2 (136 + 112*H bytes) and
+# appends 28*H future channels to the observation. sdk_sim_gate.py reads
+# this key to pick the publisher's protocol, so the two cannot drift.
+# Empty/absent = gen<=6 (TTP1, 135-dim obs).
+lookahead_offsets_s: [0.12, 0.24]
+
+# see robot.yaml: garbage-inference guard, never binds when healthy
+action_sanity_limit: 20.0
 action_clip: 100.0
 # Short blend: a long blend makes the policy fight the interpolation — it
 # winds up through last_action while the robot ignores it, then the wound-up
