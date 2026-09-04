@@ -130,3 +130,12 @@ joints:
   J22_ELBOW_YAW_R:      {q_default:  0.0,  kp: 50.0,  kd: 1.2, tau_max: 52.0, q_min: -2.618, q_max: 2.618}
   J23_HEAD_PITCH:       {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0, q_min: -0.523, q_max: 0.523}
   J24_HEAD_YAW:         {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0, q_min: -1.222, q_max: 1.222}
+
+obs_history_length: 5
+
+# FORENSIC 2026-09-05: measured, do NOT rely on the param default (true).
+# The SDK sim's imu_info.angular_velocity is ALREADY body-frame; rotating it
+# again by robot_rot^T injects Rz(-yaw) into the roll/pitch rate channels.
+# Invisible at zero yaw (stand/walk/gesture all pass) and maximal at a
+# turn's end -- which is why the turn gate never passed in any generation.
+imu_ang_vel_world: false
