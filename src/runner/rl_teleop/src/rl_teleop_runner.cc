@@ -70,6 +70,9 @@ bool RlTeleopRunner::Enter() {
   have_reference_ = false;
   fall_counter_ = 0;
   policy_bad_ = false;
+  // stale history across mode entries would feed the policy a window
+  // half from the previous session
+  hist_angvel_.clear(); hist_qpos_.clear(); hist_qvel_.clear(); hist_act_.clear();
   lpf_primed_ = false;
   resume_blend_ = 1.0;
   // Packets buffered from a previous session must never become the reference
@@ -170,6 +173,7 @@ void RlTeleopRunner::Init() {
 
   // Receiver
   if (!receiver_) {
+    n_history_ = param_->obs_history_length;
     n_lookahead_ = static_cast<int>(param_->lookahead_offsets_s.size()) *
                    rl_teleop::UdpReferenceReceiver::kLookaheadPerHorizon;
     receiver_ = std::make_unique<rl_teleop::UdpReferenceReceiver>(
@@ -188,8 +192,9 @@ void RlTeleopRunner::Init() {
   {
     const int n_look = static_cast<int>(param_->lookahead_offsets_s.size()) *
                        rl_teleop::UdpReferenceReceiver::kLookaheadPerHorizon;
-    const int expect = 50 + (param_->use_anchor_pos ? 3 : 0) + 6 + 3 + 50 +
-                       param_->num_actions + n_look;
+    const int nh = param_->obs_history_length;
+    const int expect = 50 + (param_->use_anchor_pos ? 3 : 0) + 6 +
+                       nh * (3 + 50 + param_->num_actions) + n_look;
     const std::string policy_path =
         common::PathJoin(common::GlobalPathManager::GetInstance().GetConfigPath(),
                          param_->policy_path);
@@ -460,8 +465,12 @@ void RlTeleopRunner::UpdateReference() {
 Eigen::VectorXf RlTeleopRunner::BuildObservation() {
   const int nj = rl_teleop::UdpReferenceReceiver::kNumJoints;
   const int na = param_->num_actions;
-  const int dim = 2 * nj + (param_->use_anchor_pos ? 3 : 0) + 6 + 3 + 2 * nj + na;
+  // command + anchor + anchor6d, then the PROPRIOCEPTIVE block repeated
+  // n_history_ times, then the lookahead. Matches the training group order.
+  const int dim = 2 * nj + (param_->use_anchor_pos ? 3 : 0) + 6
+                  + n_history_ * (3 + 2 * nj + na);
   Eigen::VectorXd obs(dim + n_lookahead_);
+  Eigen::Vector3d ang_vel_obs = Eigen::Vector3d::Zero();
   int k = 0;
 
   // command: ref joint positions + velocities (Isaac obs order)
@@ -504,18 +513,31 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
   // reports body-frame -> pass through.
   {
     Eigen::Vector3d w = data_store_->imu_info.Get()->angular_velocity;
-    obs.segment(k, 3) = param_->imu_ang_vel_world ? (robot_rot.transpose() * w).eval() : w;
-    k += 3;
+    ang_vel_obs = param_->imu_ang_vel_world ? (robot_rot.transpose() * w).eval() : w;
   }
 
   // proprioception (Isaac obs order); masked joints get zero velocity
-  obs.segment(k, nj) = q_actual_(obs_joint_idx_) - default_joint_q_(obs_joint_idx_); k += nj;
-  {
-    Eigen::VectorXd qd_obs = qd_actual_(obs_joint_idx_);
-    for (int p : qd_zero_pos_in_obs_) qd_obs(p) = 0.0;
-    obs.segment(k, nj) = qd_obs; k += nj;
-  }
-  obs.segment(k, na) = policy_action_; k += na;
+  Eigen::VectorXd qpos_obs = q_actual_(obs_joint_idx_) - default_joint_q_(obs_joint_idx_);
+  Eigen::VectorXd qvel_obs = qd_actual_(obs_joint_idx_);
+  for (int p : qd_zero_pos_in_obs_) qvel_obs(p) = 0.0;
+
+  // Push each term into its ring and emit the whole window OLDEST FIRST,
+  // exactly as Isaac Lab's CircularBuffer + flatten_history_dim does. On the
+  // first tick the window is primed with the current frame, matching a
+  // buffer whose first append fills every slot.
+  auto emit = [&](std::deque<Eigen::VectorXd>& ring, const Eigen::VectorXd& cur) {
+    if (ring.empty()) {
+      for (int i = 0; i < n_history_; ++i) ring.push_back(cur);
+    } else {
+      ring.push_back(cur);
+      while (static_cast<int>(ring.size()) > n_history_) ring.pop_front();
+    }
+    for (const auto& f : ring) { obs.segment(k, f.size()) = f; k += f.size(); }
+  };
+  emit(hist_angvel_, ang_vel_obs);
+  emit(hist_qpos_, qpos_obs);
+  emit(hist_qvel_, qvel_obs);
+  emit(hist_act_, policy_action_);
 
   // gen7 reference LOOKAHEAD, appended last exactly as the training
   // observation group orders it. Streamed by a TTP2 publisher; all-zeros

@@ -55,6 +55,11 @@ class RlTeleopParam : public BasicParam {
   // TTP1, no future channels). MUST match the training cfg's LOOKAHEAD_S.
   std::vector<double> lookahead_offsets_s;
 
+  // gen13: frames of proprioceptive history (base_ang_vel, joint_pos,
+  // joint_vel, last_action). 1 = disabled (gen<=12). MUST equal the training
+  // cfg's HISTORY_LENGTH and the exported deploy_config's obs_history_length.
+  int obs_history_length = 1;
+
   // Per-joint control values keyed by joint name
   std::map<std::string, TeleopJointConfig> joints;
 

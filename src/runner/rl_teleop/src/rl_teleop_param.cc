@@ -27,6 +27,10 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
   LOAD_PARAM_DEFAULT(qd_zero_joint_names, std::vector<std::string>{});
   LOAD_PARAM_DEFAULT(residual_joint_names, std::vector<std::string>{});
   LOAD_PARAM_DEFAULT(lookahead_offsets_s, std::vector<double>{});
+  LOAD_PARAM_DEFAULT(obs_history_length, 1);
+  if (obs_history_length < 1) {
+    throw std::runtime_error("rl_teleop: obs_history_length must be >= 1");
+  }
   LOAD_PARAM_DEFAULT(ref_jvel_clip, 12.0);
   LOAD_PARAM_DEFAULT(ref_jvel_alpha, 0.3);
   LOAD_PARAM_DEFAULT(action_lpf_alpha, 1.0);

@@ -19,6 +19,7 @@
 //    after Enter(), so the operator's world frame and the robot's frame
 //    agree on heading at mode entry.
 
+#include <deque>
 #include <fstream>
 
 #include "basic/motion_runner.h"
@@ -70,6 +71,12 @@ class RlTeleopRunner : public MotionRunner {
   Eigen::VectorXi residual_joint_idx_;  // gen6 arm-delta joints (may be empty)
   std::vector<int> residual_pos_in_obs_;
   int n_lookahead_ = 0;  // 28 * number of gen7 lookahead horizons
+  // gen13 proprioceptive history. Isaac Lab keeps one CircularBuffer per term
+  // and flattens (N, dim) with the OLDEST entry FIRST, so each block is
+  // [t-(N-1) ... t-1, t]. Reproduce that ordering exactly: a scrambled block
+  // still has the right width and would fail silently.
+  int n_history_ = 1;
+  std::deque<Eigen::VectorXd> hist_angvel_, hist_qpos_, hist_qvel_, hist_act_;
   std::vector<int> action_pos_in_obs_; // where each action joint sits in obs order
   std::vector<int> motion_pos_in_obs_; // where each motion-driven joint sits in obs order
   std::vector<int> qd_zero_pos_in_obs_; // obs positions whose velocity is masked to zero
