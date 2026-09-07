@@ -99,7 +99,21 @@ action_lpf_alpha: 0.5
 # Reference base-orientation slew limit (rad/s; >=10 disables) — protects
 # hardware from fast commanded spins (clip pirouettes, abrupt live-PICO
 # turns) the plant cannot follow. See default.yaml for the measured basis.
-ref_ang_slew: 0.8  # match the gated sim value (config-drift guard 2026-09-01)
+# DISABLED 2026-09-07 (>=10 is off). Measured on g14_21500: the limiter cost
+# 30.3 deg of reference lag at the clip's 2.0 rad/s peak (6.1 deg at 1.0 rad/s)
+# and bought NOTHING -- turn gate PASS x2 either way at both speeds, with max
+# tilt, yaw tracking and post-turn chatter indistinguishable. Training never
+# rate-limits the reference orientation, so any value below the commanded rate
+# is a pure train/deploy mismatch: the joint reference moves at full speed
+# while the base-orientation reference lags behind it.
+# Also measured, correcting an earlier hypothesis: the slewed reference does
+# NOT keep rotating after the command stops on this policy -- processed and
+# raw stop in the same control step, overshoot +0.00 s. That mechanism was
+# real on g14_5000 when the turn gate was failing; it is gone here.
+# The protection it was added for (fast commanded spins the plant cannot
+# follow) is therefore unproven on this policy. If a hardware turn goes bad,
+# this is the first thing to put back.
+ref_ang_slew: 12.0
 
 # Policy runs immediately on a built-in standing reference; UDP stream takes
 # over when packets arrive

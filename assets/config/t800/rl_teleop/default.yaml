@@ -59,7 +59,21 @@ action_lpf_alpha: 0.7
 # 4.05 and the uncloseable anchor error topples the robot at the spin exit.
 # 2.2 keeps the reference reachable — the robot turns at its own pace and
 # arrives late instead of falling. Inert for normal walking (<=0.35 rad/s).
-ref_ang_slew: 0.8
+# DISABLED 2026-09-07 (>=10 is off). Measured on g14_21500: the limiter cost
+# 30.3 deg of reference lag at the clip's 2.0 rad/s peak (6.1 deg at 1.0 rad/s)
+# and bought NOTHING -- turn gate PASS x2 either way at both speeds, with max
+# tilt, yaw tracking and post-turn chatter indistinguishable. Training never
+# rate-limits the reference orientation, so any value below the commanded rate
+# is a pure train/deploy mismatch: the joint reference moves at full speed
+# while the base-orientation reference lags behind it.
+# Also measured, correcting an earlier hypothesis: the slewed reference does
+# NOT keep rotating after the command stops on this policy -- processed and
+# raw stop in the same control step, overshoot +0.00 s. That mechanism was
+# real on g14_5000 when the turn gate was failing; it is gone here.
+# The protection it was added for (fast commanded spins the plant cannot
+# follow) is therefore unproven on this policy. If a hardware turn goes bad,
+# this is the first thing to put back.
+ref_ang_slew: 12.0
 
 # Policy runs immediately on a built-in standing reference; UDP stream takes
 # over when packets arrive
@@ -131,7 +145,6 @@ joints:
   J23_HEAD_PITCH:       {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0, q_min: -0.523, q_max: 0.523}
   J24_HEAD_YAW:         {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0, q_min: -1.222, q_max: 1.222}
 
-obs_history_length: 5
 
 # FORENSIC 2026-09-05: measured, do NOT rely on the param default (true).
 # The SDK sim's imu_info.angular_velocity is ALREADY body-frame; rotating it
@@ -139,3 +152,12 @@ obs_history_length: 5
 # Invisible at zero yaw (stand/walk/gesture all pass) and maximal at a
 # turn's end -- which is why the turn gate never passed in any generation.
 imu_ang_vel_world: false
+
+
+
+
+
+
+
+
+obs_history_length: 5
