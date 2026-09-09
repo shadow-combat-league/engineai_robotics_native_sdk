@@ -6,9 +6,34 @@
 set -e
 
 # !!! Sets the remote user and host
-remote_user="user"
-remote_host="192.168.0.163"
+remote_user="ubuntu"
+remote_host="192.168.69.247"
 remote_dir="~/projects/engineai_robotics"
+
+# Env overrides, so the target need not be hand-edited per machine.
+# NOTE the deliberate form: these must NOT begin with `remote_host="` at the
+# start of a line, because deploy/preflight_hardware.py parses this file with
+# ^remote_(user|host|dir)="([^"]*)" and must keep matching the LITERAL
+# defaults above rather than a shell expansion.
+[ -n "${REMOTE_USER:-}" ] && remote_user="$REMOTE_USER"
+[ -n "${REMOTE_HOST:-}" ] && remote_host="$REMOTE_HOST"
+[ -n "${REMOTE_DIR:-}"  ] && remote_dir="$REMOTE_DIR"
+
+# SSH_JUMP: hop through an intermediate host (ssh -J). Added 2026-09-09, when
+# the robot's Ethernet died and the only route to the on-robot compute was
+# USB-tethering a phone to it and jumping through Termux's sshd:
+#
+#   SSH_JUMP=u0_a123@10.19.37.133:8022 REMOTE_HOST=192.168.42.2 \
+#     ./install.sh t800 robot
+#
+# Empty by default, so the normal direct path is byte-for-byte unchanged.
+ssh_jump_opt=()
+ssh_jump_str=""
+if [ -n "${SSH_JUMP:-}" ]; then
+    ssh_jump_opt=(-J "$SSH_JUMP")
+    ssh_jump_str=" -J $SSH_JUMP"
+    echo "Jumping via ${SSH_JUMP}"
+fi
 
 # Sets the remote destination
 remote_dest="${remote_user}@${remote_host}"
@@ -74,16 +99,16 @@ fi
 
 # Opens a single SSH connection (password prompted once); mkdir and rsync reuse it
 echo "Connecting to ${remote_dest} (enter password once)..."
-ssh -o ControlMaster=yes -o ControlPath="${ssh_control_path}" -o ControlPersist=60 "${remote_dest}" "echo 'Connected.'"
+ssh "${ssh_jump_opt[@]}" -o ControlMaster=yes -o ControlPath="${ssh_control_path}" -o ControlPersist=60 "${remote_dest}" "echo 'Connected.'"
 
 # Ensures the remote directory exists (reuses connection, no password)
-ssh -o ControlPath="${ssh_control_path}" "${remote_dest}" "mkdir -p $remote_dir"
+ssh "${ssh_jump_opt[@]}" -o ControlPath="${ssh_control_path}" "${remote_dest}" "mkdir -p $remote_dir"
 
-rsync -avz --delete -e "ssh -o ControlPath=${ssh_control_path}" "${temp_dir}/" "${remote_dest}:$remote_dir"
+rsync -avz --delete -e "ssh -o ControlPath=${ssh_control_path}${ssh_jump_str}" "${temp_dir}/" "${remote_dest}:$remote_dir"
 
 # Updates active_mode in remote mode.yaml (same logic as in scripts/package.sh)
 remote_mode_yaml="${remote_dir}/assets/config/${product_name}/mode.yaml"
-ssh -o ControlPath="${ssh_control_path}" "${remote_dest}" "sed -i 's/^active_mode:.*$/active_mode: $active_mode/' $remote_mode_yaml"
+ssh "${ssh_jump_opt[@]}" -o ControlPath="${ssh_control_path}" "${remote_dest}" "sed -i 's/^active_mode:.*$/active_mode: $active_mode/' $remote_mode_yaml"
 echo "Updated active_mode to '$active_mode' in remote $remote_mode_yaml"
 
 echo "Congratulations! Installed to ${remote_user}@${remote_host}:${remote_dir}"
