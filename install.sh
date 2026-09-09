@@ -6,8 +6,8 @@
 set -e
 
 # !!! Sets the remote user and host
-remote_user="ubuntu"
-remote_host="192.168.69.247"
+# remote_user="ubuntu"
+# remote_host="192.168.69.247"
 remote_dir="~/projects/engineai_robotics"
 
 # Env overrides, so the target need not be hand-edited per machine.
@@ -15,9 +15,30 @@ remote_dir="~/projects/engineai_robotics"
 # start of a line, because deploy/preflight_hardware.py parses this file with
 # ^remote_(user|host|dir)="([^"]*)" and must keep matching the LITERAL
 # defaults above rather than a shell expansion.
-[ -n "${REMOTE_USER:-}" ] && remote_user="$REMOTE_USER"
-[ -n "${REMOTE_HOST:-}" ] && remote_host="$REMOTE_HOST"
-[ -n "${REMOTE_DIR:-}"  ] && remote_dir="$REMOTE_DIR"
+# SET-BUT-EMPTY IS AN ERROR, not a fallback. With `[ -n "${REMOTE_HOST:-}" ]`
+# an empty value silently kept the literal default -- so
+# REMOTE_HOST=$(discovery-that-failed) would quietly deploy to the ORIN when
+# you meant Nezha. Overwriting the wrong board's config is worse than
+# stopping. ${VAR+x} distinguishes unset from empty.
+# NOTE: split with parameter expansion, NOT `set --`. `set --` replaces the
+# script's positional parameters, and this block runs BEFORE
+# product_name="$1" / active_mode="$2" are read -- so it silently installed
+# "product REMOTE_DIR, mode remote_dir". Caught by test, 2026-09-09.
+for _pair in "REMOTE_USER:remote_user" "REMOTE_HOST:remote_host" "REMOTE_DIR:remote_dir"; do
+    _env="${_pair%%:*}"; _var="${_pair##*:}"
+    if [ "$(eval "printf '%s' \"\${${_env}+x}\"")" = "x" ]; then
+        _val="$(eval "printf '%s' \"\$${_env}\"")"
+        if [ -z "$_val" ]; then
+            echo "ERROR: ${_env} is set but EMPTY." >&2
+            echo "  Refusing to fall back to the built-in default -- that would" >&2
+            echo "  deploy to the wrong board silently." >&2
+            echo "  If you used \$(deploy/find_robot_via_jump.sh), it failed and" >&2
+            echo "  printed nothing; run it alone to see why (stderr)." >&2
+            exit 1
+        fi
+        eval "${_var}=\"\$${_env}\""
+    fi
+done
 
 # SSH_JUMP: hop through an intermediate host (ssh -J). Added 2026-09-09, when
 # the robot's Ethernet died and the only route to the on-robot compute was
@@ -36,6 +57,20 @@ if [ -n "${SSH_JUMP:-}" ]; then
 fi
 
 # Sets the remote destination
+# Fail fast on an empty target. Without this, an unset or failed
+# REMOTE_HOST (e.g. REMOTE_HOST=$(discovery-script-that-failed)) builds
+# "user@" and ssh spends a password prompt and a confusing
+# kex_exchange_identification error before dying. Observed 2026-09-09.
+for _v in remote_user remote_host remote_dir; do
+    if [ -z "$(eval "printf '%s' \"\$$_v\"")" ]; then
+        echo "ERROR: $_v is empty." >&2
+        echo "  If you used REMOTE_HOST=\$(deploy/find_robot_via_jump.sh)," >&2
+        echo "  that script failed and printed nothing -- run it on its own" >&2
+        echo "  to see why (its diagnostics go to stderr)." >&2
+        exit 1
+    fi
+done
+
 remote_dest="${remote_user}@${remote_host}"
 
 # Gets the source directory
