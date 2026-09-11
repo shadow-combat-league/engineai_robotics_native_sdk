@@ -1,12 +1,23 @@
 # Sets as `se01` or `sa01` 'pm01'
 motor_configuration_type: t800
+# Rows follow the limb order in model/default.yaml:
+#   left_leg(6) right_leg(6) waist(1) left_arm(5) right_arm(5) head(2)
+# HEAD DISABLED (2026-09-11): the head was torn off in a hardware accident,
+# so J23_HEAD_PITCH / J24_HEAD_YAW no longer exist on the bus. Left enabled,
+# the motor runner's MotorMonitor::CheckOfflineAndDisable flags them offline
+# and refuses to enable ("Cannot enable motor in error state."). The IMU is
+# on LINK_BASE, the head is 2.4 kg of 74.8, and the rl_teleop policy does not
+# actuate the head (observation only), so the robot can run without it. Pair
+# with `pico_udp_publisher.py --zero-head` so the streamed head reference
+# matches the (static) head joint state the policy observes. Restore [1, 1]
+# when the head is reattached.
 enabled_motor:
   - [1, 1, 1, 1, 1, 1]
   - [1, 1, 1, 1, 1, 1]
   - [1]
   - [1, 1, 1, 1, 1]
   - [1, 1, 1, 1, 1]
-  - [1, 1]
+  - [0, 0]
 sign:
   - [1, 1, -1, 1, -1, -1]
   - [-1, 1, -1, -1, -1, -1]
