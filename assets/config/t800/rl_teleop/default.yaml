@@ -161,3 +161,6 @@ imu_ang_vel_world: false
 
 
 obs_history_length: 5
+
+# 2026-11-02 heading fix (see rl_teleop_param.h)
+robot_rot_mode: heading_fixed

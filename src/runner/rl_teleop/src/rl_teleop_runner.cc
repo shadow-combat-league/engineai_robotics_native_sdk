@@ -93,7 +93,7 @@ bool RlTeleopRunner::Enter() {
     // Run the policy immediately against a standing reference: default pose,
     // upright orientation, zero velocity. Equivalent to sim_teleop --hold.
     // The mount offset is captured NOW (robot upright in pd_stand).
-    robot_rot0_ = RobotBaseRotation();
+    CaptureRobotRot0();
     ref_rot_ = Eigen::Matrix3d::Identity();
     ref_jpos_ = default_joint_q_(obs_joint_idx_);
     ref_jvel_.setZero();
@@ -128,7 +128,7 @@ void RlTeleopRunner::Run() {
   // executing the policy (on hardware: stop fighting the floor). Damps to
   // zero targets at low gains until the operator exits the mode.
   {
-    Eigen::Matrix3d robot_rot = RobotBaseRotation() * robot_rot0_.transpose();
+    Eigen::Matrix3d robot_rot = RobotRotRelative();
     double up_z = robot_rot(2, 2);  // world-z component of base up-axis
     fall_counter_ = (up_z < 0.5) ? fall_counter_ + 1 : 0;
     if (fall_counter_ == 25) {
@@ -320,6 +320,34 @@ Eigen::Matrix3d RlTeleopRunner::RobotBaseRotation() const {
   return R_local * R_install.transpose();
 }
 
+// Entry capture: M0 and its heading Y0. The robot is upright here, so M0's
+// heading is the robot's heading in the IMU world (mount assumed yaw-free;
+// warn if the raw entry tilt says otherwise).
+void RlTeleopRunner::CaptureRobotRot0() {
+  robot_rot0_ = RobotBaseRotation();
+  robot_yaw0_ = YawRotation(robot_rot0_);
+  Eigen::Matrix3d tilt0 = robot_yaw0_.transpose() * robot_rot0_;
+  double tilt0_deg = std::acos(std::clamp(tilt0(2, 2), -1.0, 1.0)) * 180.0 / M_PI;
+  double yaw0_deg = std::atan2(robot_yaw0_(1, 0), robot_yaw0_(0, 0)) * 180.0 / M_PI;
+  LOG(INFO) << "rl_teleop: robot entry frame captured: heading " << yaw0_deg << " deg, raw tilt "
+            << tilt0_deg << " deg, robot_rot_mode " << param_->robot_rot_mode;
+  if (tilt0_deg > 10.0) {
+    LOG(WARNING) << "rl_teleop: raw IMU tilt at entry " << tilt0_deg
+                 << " deg > 10: the IMU mount is not yaw-only or the robot is not upright; "
+                 << "heading_fixed tilt axes may be wrong";
+  }
+}
+
+// Orientation relative to entry. M M0^T cancels a constant mount offset C
+// (M = W C) on the right, leaving W W0^T: the tilt delta in IMU-WORLD axes.
+// Conjugating with the entry heading re-expresses it in entry-heading (body)
+// axes, matching ref_rot_ = Yaw(ref0)^T W_ref on the reference side.
+Eigen::Matrix3d RlTeleopRunner::RobotRotRelative() const {
+  Eigen::Matrix3d delta_world = RobotBaseRotation() * robot_rot0_.transpose();
+  if (param_->robot_rot_mode == "legacy") return delta_world;
+  return robot_yaw0_.transpose() * delta_world * robot_yaw0_;
+}
+
 void RlTeleopRunner::UpdateReference() {
   bool got_new = receiver_->Poll();
   const auto& frame = receiver_->Latest();
@@ -360,7 +388,7 @@ void RlTeleopRunner::UpdateReference() {
     // The reference stream is a clean world measurement; align its heading
     // only: R_ref(t) = Yaw(ref0)^T * W_ref(t).
     if (!yaw_aligned_) {
-      robot_rot0_ = RobotBaseRotation();  // M(0)
+      CaptureRobotRot0();  // M(0) and its heading
       ref_rot0_ = YawRotation(QuatWxyzToRot(frame.quat_wxyz));
       yaw_aligned_ = true;
       slew_primed_ = false;
@@ -477,7 +505,7 @@ Eigen::VectorXf RlTeleopRunner::BuildObservation() {
   obs.segment(k, nj) = ref_jpos_; k += nj;
   obs.segment(k, nj) = ref_jvel_; k += nj;
 
-  Eigen::Matrix3d robot_rot = RobotBaseRotation() * robot_rot0_.transpose();
+  Eigen::Matrix3d robot_rot = RobotRotRelative();
 
   // anchor position error in the robot base frame (training's
   // subtract_frame_transforms, clipped +-1 m like deploy/sim_teleop.py).

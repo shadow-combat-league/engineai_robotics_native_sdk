@@ -185,3 +185,7 @@ joints:
   J22_ELBOW_YAW_R:      {q_default:  0.0,  kp: 50.0,  kd: 1.2, tau_max: 52.0, q_min: -2.618, q_max: 2.618}
   J23_HEAD_PITCH:       {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0, q_min: -0.523, q_max: 0.523}
   J24_HEAD_YAW:         {q_default:  0.0,  kp: 50.0,  kd: 0.3, tau_max: 52.0, q_min: -1.222, q_max: 1.222}
+
+# 2026-11-02 heading fix (see rl_teleop_param.h): legacy inverted roll/pitch
+# feedback whenever the IMU heading at stream start was ~180 deg (backward lean)
+robot_rot_mode: heading_fixed

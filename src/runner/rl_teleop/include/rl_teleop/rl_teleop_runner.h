@@ -56,6 +56,10 @@ class RlTeleopRunner : public MotionRunner {
   void ApplyTorqueLimits(Eigen::VectorXd& q_des);
   double ComputeTransitionRatio() const;
   Eigen::Matrix3d RobotBaseRotation() const;
+  // Robot orientation relative to the captured entry frame (see
+  // robot_rot_mode). The ONLY place robot_rot0_ is applied.
+  Eigen::Matrix3d RobotRotRelative() const;
+  void CaptureRobotRot0();
 
   std::shared_ptr<data::RlTeleopParam> param_;
   std::string last_param_tag_ = "";
@@ -127,6 +131,7 @@ class RlTeleopRunner : public MotionRunner {
   // Initial frames captured at first packet; all orientations are used
   // relative to these so constant IMU mount/convention offsets cancel.
   Eigen::Matrix3d robot_rot0_ = Eigen::Matrix3d::Identity();
+  Eigen::Matrix3d robot_yaw0_ = Eigen::Matrix3d::Identity();  // heading of robot_rot0_
   Eigen::Matrix3d ref_rot0_ = Eigen::Matrix3d::Identity();
 
   std::ofstream flight_log_;

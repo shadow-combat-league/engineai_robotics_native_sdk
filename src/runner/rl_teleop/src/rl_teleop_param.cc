@@ -23,6 +23,10 @@ RlTeleopParam::RlTeleopParam(std::string_view tag) : BasicParam(tag) {
     throw std::runtime_error(
         "rl_teleop: anchor_pos_source must be 'none', 'estimator', or 'velocity'");
   }
+  LOAD_PARAM_DEFAULT(robot_rot_mode, std::string("heading_fixed"));
+  if (robot_rot_mode != "heading_fixed" && robot_rot_mode != "legacy") {
+    throw std::runtime_error("rl_teleop: robot_rot_mode must be 'heading_fixed' or 'legacy'");
+  }
   LOAD_PARAM_DEFAULT(imu_ang_vel_world, true);
   LOAD_PARAM_DEFAULT(qd_zero_joint_names, std::vector<std::string>{});
   LOAD_PARAM_DEFAULT(residual_joint_names, std::vector<std::string>{});

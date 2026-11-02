@@ -78,6 +78,17 @@ class RlTeleopParam : public BasicParam {
   //                 saturates near the clip like training values.
   std::string anchor_pos_source = "none";
   double anchor_vel_tau = 2.0;  // leak time constant (s) for "velocity" mode
+  // Robot orientation relative to entry (feeds anchor6d, anchor_pos rotation,
+  // fall detection):
+  //   "heading_fixed" - Y0^T (M M0^T) Y0, Y0 = heading of M0. Mount offset
+  //                     still cancels on the right; the delta is expressed
+  //                     in the ENTRY-HEADING frame, so tilt axes are body axes
+  //                     whatever the IMU's world heading was at entry.
+  //   "legacy"        - M M0^T. Tilt axes are rotated by the entry heading:
+  //                     correct only at heading ~0 (always true in the SDK
+  //                     sim); at ~180 deg on the robot roll/pitch feedback is
+  //                     INVERTED (2026-11-02 backward-lean root cause).
+  std::string robot_rot_mode = "heading_fixed";
   // Angular-velocity frame of imu_info: the SIM publishes world-frame
   // (frameangvel of the imu site); real IMU gyros report body-frame.
   // true = rotate world->base (sim); false = pass through (hardware).
