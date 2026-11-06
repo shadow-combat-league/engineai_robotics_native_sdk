@@ -15,6 +15,9 @@
 #include <glog/logging.h>
 #include <mujoco/mujoco.h>
 #include <cerrno>
+#include <cmath>
+#include <deque>
+#include <random>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -81,6 +84,34 @@ void UpdateSimState(const mjModel* m, mjData* d) {
   } else {
     sim_state.q = Eigen::Map<const Eigen::VectorXd>(d->qpos, m->nu);
     sim_state.qd = Eigen::Map<const Eigen::VectorXd>(d->qvel, m->nu);
+  }
+  // Optional robot-like joint-velocity SENSOR noise on the legs (test only; off unless the control file exists).
+  // /tmp/sim_qd_noise: "<std ankle pitch> <std ankle roll> <std other leg joints>" rad/s, Gaussian, re-read every
+  // 0.5 s. Only the published state is noisy; the simulated PD uses the true velocity (as the motor drivers do).
+  // Measured on the T800 (qd minus d(q)/dt at 50 Hz, 2026-11-05): ankle roll ~3.5, ankle pitch ~1.2, hips/knees ~0.3.
+  {
+    static double s_ap = 0.0, s_ar = 0.0, s_o = 0.0;
+    static long n = 0;
+    static std::mt19937 rng(12345);
+    if (n++ % 250 == 0) {
+      double a = 0.0, b = 0.0, c = 0.0;
+      if (FILE* f = std::fopen("/tmp/sim_qd_noise", "r")) {
+        if (std::fscanf(f, "%lf %lf %lf", &a, &b, &c) != 3) a = b = c = 0.0;
+        std::fclose(f);
+      }
+      if (a != s_ap || b != s_ar || c != s_o)
+        std::cout << "[sim] leg qd noise std: ankle pitch " << a << ", ankle roll " << b << ", other " << c << std::endl;
+      s_ap = a;
+      s_ar = b;
+      s_o = c;
+    }
+    if ((s_ap > 0.0 || s_ar > 0.0 || s_o > 0.0) && m->nu >= 12) {
+      std::normal_distribution<double> N(0.0, 1.0);
+      for (int i = 0; i < 12; ++i) {  // serial order J00..J11: ankle pitch 4/10, ankle roll 5/11
+        const double s = (i == 4 || i == 10) ? s_ap : (i == 5 || i == 11) ? s_ar : s_o;
+        if (s > 0.0) sim_state.qd(i) += s * N(rng);
+      }
+    }
   }
   sim_state.tau = Eigen::Map<const Eigen::VectorXd>(d->actuator_force, m->nu);
 
@@ -164,6 +195,51 @@ void TorqueController(const mjModel* m, mjData* d) {
   }
 
   SimCommand sim_command = lcm_data_store->sim_command();
+
+  // Optional robot-like actuator pipeline (test only; off unless the control file exists = original behaviour).
+  // Control file /tmp/sim_cmd_pipeline: "<lag_s> <tau_s>", re-read every 0.5 s of sim time, so a test can switch
+  // it on after the vendor stand/walk modes (which are not delay-trained) have handed over.
+  //   lag_s  transport lag of the whole command (q, qd, kp, kd, tau_ff), seconds
+  //   tau_s  one-pole low-pass time constant on the position target, seconds
+  // Mirrors supermimic PipelinePdActuator (lag in physics steps, then filter on q).
+  {
+    static double lag_s = 0.0, tau_s = 0.0;
+    static long step = 0;
+    static std::deque<SimCommand> hist;
+    static Eigen::VectorXd q_filt;
+    static double t_last = -1.0;
+    if (step++ % 250 == 0) {
+      double l = 0.0, t = 0.0;
+      if (FILE* f = std::fopen("/tmp/sim_cmd_pipeline", "r")) {
+        if (std::fscanf(f, "%lf %lf", &l, &t) != 2) l = t = 0.0;
+        std::fclose(f);
+      }
+      if (l != lag_s || t != tau_s) {
+        std::cout << "[sim] actuator pipeline: lag " << l * 1e3 << " ms, filter tau " << t * 1e3 << " ms" << std::endl;
+        lag_s = l;
+        tau_s = t;
+        q_filt.resize(0);
+      }
+    }
+    if (d->time < t_last || sim_command.q.size() != m->nu) {  // reset or no command yet
+      hist.clear();
+      q_filt.resize(0);
+    }
+    t_last = d->time;
+    if (sim_command.q.size() == m->nu) {
+      const size_t lag_steps = static_cast<size_t>(std::lround(lag_s / m->opt.timestep));
+      hist.push_back(sim_command);  // history always kept, so switching on is seamless
+      while (hist.size() > 64) hist.pop_front();
+      if (lag_steps > 0) sim_command = hist[hist.size() - 1 - std::min(lag_steps, hist.size() - 1)];
+      if (tau_s > 0.0) {
+        if (q_filt.size() != m->nu) q_filt = sim_command.q;
+        const double a = m->opt.timestep / (tau_s + m->opt.timestep);
+        q_filt += a * (sim_command.q - q_filt);
+        sim_command.q = q_filt;
+      }
+    }
+  }
+
   Eigen::VectorXd tau_cmd(m->nu);
   tau_cmd = sim_command.kp.cwiseProduct(sim_command.q - q) + sim_command.kd.cwiseProduct(sim_command.qd - qd) +
             sim_command.tau_ff;

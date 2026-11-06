@@ -53,6 +53,8 @@ mode:
       scope: rl_dance_example/default
     - tag: rl_teleop
       scope: rl_teleop/robot
+    - tag: rl_supermimic
+      scope: rl_supermimic/robot
 
   sim:
     - tag: resident_task
@@ -93,3 +95,5 @@ mode:
       scope: rl_dance_example/default
     - tag: rl_teleop
       scope: rl_teleop/default
+    - tag: rl_supermimic
+      scope: rl_supermimic/default

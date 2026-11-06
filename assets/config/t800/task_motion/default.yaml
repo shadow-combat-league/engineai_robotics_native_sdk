@@ -67,7 +67,22 @@ tasks:
       # (measured 2026-08-31: 8 deg back-lean takeover reproduces the
       # hardware air-stepping).
       - rl_teleop
+      - supermimic  # same rule as rl_teleop: hand over from a balanced robot
     key: [LB, B]
+
+  # SuperMimic general tracker on the terminator-teleop UDP stream (all 25 joints).
+  # Publisher: deploy/pico_udp_publisher.py --port 47801 (rl_teleop keeps 47800).
+  - motion: supermimic
+    period: 0.02
+    runner:
+      - name: rl_supermimic_runner
+        enabled: true
+        param_tag: rl_supermimic
+    manual_transition:
+      - passive
+      - pd_stand
+      - walk
+    key: [RB, Y]
 
   - motion: dance
     period: 0.02

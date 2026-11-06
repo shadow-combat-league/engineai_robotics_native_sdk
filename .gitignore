@@ -39,3 +39,7 @@ _build
 .cache
 build
 .vscode
+# rl_supermimic runner flight logs (written on every mode entry)
+assets/config/t800/rl_supermimic/flight_log*.csv
+# policy.mnn + self-test files are installed by deploy/supermimic/export_policy.sh, not versioned here
+assets/config/t800/rl_supermimic/policy/
